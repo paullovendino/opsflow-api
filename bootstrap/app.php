@@ -17,6 +17,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+
+        $middleware->redirectUsersTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                abort(403, 'Already authenticated.');
+            }
+
+            return '/';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

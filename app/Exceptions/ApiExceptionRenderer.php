@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\InvalidCredentialsException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -28,6 +29,10 @@ final class ApiExceptionRenderer
                 message: 'The given data was invalid.',
                 status: Response::HTTP_UNPROCESSABLE_ENTITY,
                 errors: $exception->errors(),
+            ),
+            $exception instanceof InvalidCredentialsException => $this->response(
+                message: $exception->getMessage(),
+                status: Response::HTTP_UNAUTHORIZED,
             ),
             $exception instanceof AuthenticationException => $this->response(
                 message: 'Unauthenticated.',
