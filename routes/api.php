@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\LookupController;
+use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -17,6 +19,21 @@ Route::prefix('v1')->group(function (): void {
         Route::middleware('auth:sanctum')->group(function (): void {
             Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
             Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
+        });
+    });
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+
+        Route::prefix('lookups')->group(function (): void {
+            Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');
+            Route::get('/departments', [LookupController::class, 'departments'])->name('lookups.departments');
+            Route::get('/job-titles', [LookupController::class, 'jobTitles'])->name('lookups.job-titles');
         });
     });
 });

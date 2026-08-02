@@ -28,27 +28,19 @@ class UserResource extends JsonResource
             'avatar' => $this->avatar,
             'status' => $this->status,
             'last_login_at' => $this->last_login_at,
-            'role' => $this->whenLoaded('role', fn (): array => [
-                'id' => $this->role->id,
-                'name' => $this->role->name,
-                'description' => $this->role->description,
-            ]),
-            'department' => $this->whenLoaded('department', fn (): ?array => $this->department === null
-                ? null
-                : [
-                    'id' => $this->department->id,
-                    'name' => $this->department->name,
-                    'code' => $this->department->code,
-                    'description' => $this->department->description,
-                ]),
-            'job_title' => $this->whenLoaded('jobTitle', fn (): ?array => $this->jobTitle === null
-                ? null
-                : [
-                    'id' => $this->jobTitle->id,
-                    'name' => $this->jobTitle->name,
-                    'code' => $this->jobTitle->code,
-                    'description' => $this->jobTitle->description,
-                ]),
+            'role' => $this->whenLoaded('role', fn (): RoleResource => new RoleResource($this->role)),
+            'department' => $this->whenLoaded(
+                'department',
+                fn (): ?DepartmentResource => $this->department === null
+                    ? null
+                    : new DepartmentResource($this->department),
+            ),
+            'job_title' => $this->whenLoaded(
+                'jobTitle',
+                fn (): ?JobTitleResource => $this->jobTitle === null
+                    ? null
+                    : new JobTitleResource($this->jobTitle),
+            ),
         ];
     }
 }
