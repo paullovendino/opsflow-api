@@ -34,6 +34,10 @@ final class ApiExceptionRenderer
                 message: $exception->getMessage(),
                 status: Response::HTTP_UNAUTHORIZED,
             ),
+            $exception instanceof AccountInactiveException => $this->response(
+                message: $exception->getMessage(),
+                status: Response::HTTP_FORBIDDEN,
+            ),
             $exception instanceof AuthenticationException => $this->response(
                 message: 'Unauthenticated.',
                 status: Response::HTTP_UNAUTHORIZED,

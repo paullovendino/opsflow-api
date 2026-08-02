@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Enums\UserStatus;
+use App\Exceptions\AccountInactiveException;
 use App\Exceptions\InvalidCredentialsException;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class AuthenticationService
      * @param  array{email: string, password: string}  $credentials
      *
      * @throws InvalidCredentialsException
+     * @throws AccountInactiveException
      */
     public function login(array $credentials, Request $request): User
     {
@@ -27,12 +30,22 @@ class AuthenticationService
             throw new InvalidCredentialsException;
         }
 
-        $request->session()->regenerate();
-
         /** @var User $user */
         $user = Auth::guard('web')->user();
 
-        return $user;
+        if ($user->status === UserStatus::Inactive) {
+            Auth::guard('web')->logout();
+
+            throw new AccountInactiveException;
+        }
+
+        $request->session()->regenerate();
+
+        $user->forceFill([
+            'last_login_at' => now(),
+        ])->save();
+
+        return $user->load(['role', 'department', 'jobTitle']);
     }
 
     public function logout(Request $request): void
@@ -48,6 +61,6 @@ class AuthenticationService
         /** @var User $user */
         $user = $request->user();
 
-        return $user;
+        return $user->loadMissing(['role', 'department', 'jobTitle']);
     }
 }

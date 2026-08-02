@@ -20,11 +20,35 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'first_name' => $this->first_name,
+            'middle_name' => $this->middle_name,
+            'last_name' => $this->last_name,
+            'full_name' => $this->full_name,
             'email' => $this->email,
-            'email_verified_at' => $this->email_verified_at,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'avatar' => $this->avatar,
+            'status' => $this->status,
+            'last_login_at' => $this->last_login_at,
+            'role' => $this->whenLoaded('role', fn (): array => [
+                'id' => $this->role->id,
+                'name' => $this->role->name,
+                'description' => $this->role->description,
+            ]),
+            'department' => $this->whenLoaded('department', fn (): ?array => $this->department === null
+                ? null
+                : [
+                    'id' => $this->department->id,
+                    'name' => $this->department->name,
+                    'code' => $this->department->code,
+                    'description' => $this->department->description,
+                ]),
+            'job_title' => $this->whenLoaded('jobTitle', fn (): ?array => $this->jobTitle === null
+                ? null
+                : [
+                    'id' => $this->jobTitle->id,
+                    'name' => $this->jobTitle->name,
+                    'code' => $this->jobTitle->code,
+                    'description' => $this->jobTitle->description,
+                ]),
         ];
     }
 }
