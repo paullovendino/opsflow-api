@@ -6,20 +6,33 @@ namespace App\Services\Users;
 
 use App\Enums\UserStatus;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use App\Queries\Users\UserQuery;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
+    public function __construct(
+        private readonly UserQuery $userQuery,
+    ) {}
+
     /**
-     * @return Collection<int, User>
+     * @param  array{
+     *     search?: string|null,
+     *     role_id?: int|null,
+     *     department_id?: int|null,
+     *     job_title_id?: int|null,
+     *     status?: string|null,
+     *     sort?: string,
+     *     direction?: string,
+     *     page?: int,
+     *     per_page?: int
+     * }  $filters
+     * @return LengthAwarePaginator<int, User>
      */
-    public function list(): Collection
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return User::query()
-            ->with(['role', 'department', 'jobTitle'])
-            ->orderBy('id')
-            ->get();
+        return $this->userQuery->paginate($filters);
     }
 
     public function find(User $user): User

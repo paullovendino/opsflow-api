@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\UserStatus;
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\Api\V1\Users\IndexUsersRequest;
 use App\Http\Requests\Api\V1\Users\StoreUserRequest;
 use App\Http\Requests\Api\V1\Users\UpdateUserRequest;
 use App\Http\Requests\Api\V1\Users\UpdateUserStatusRequest;
@@ -21,11 +22,12 @@ class UserController extends BaseApiController
         private readonly UserService $userService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(IndexUsersRequest $request): JsonResponse
     {
-        $users = $this->userService->list();
+        $users = $this->userService->list($request->filters());
 
-        return $this->successResponse(
+        return $this->paginatedResponse(
+            paginator: $users,
             data: UserResource::collection($users),
             message: 'Users retrieved successfully.',
         );

@@ -99,8 +99,10 @@ class UserManagementApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Users retrieved successfully.')
-            ->assertJsonPath('meta', null);
+            ->assertJsonPath('meta.per_page', 15)
+            ->assertJsonPath('meta.current_page', 1);
 
+        $this->assertGreaterThanOrEqual(3, $response->json('meta.total'));
         $this->assertGreaterThanOrEqual(3, count($response->json('data')));
         $this->assertIsArray($response->json('data.0.role'));
     }

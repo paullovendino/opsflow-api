@@ -7,7 +7,7 @@ namespace App\Traits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Http\Resources\Json\ResourceCollection;
-use Illuminate\Pagination\AbstractPaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\Response;
 
 trait ApiResponse
@@ -44,12 +44,13 @@ trait ApiResponse
     }
 
     protected function paginatedResponse(
-        AbstractPaginator $paginator,
+        LengthAwarePaginator $paginator,
+        mixed $data = null,
         string $message = 'Request completed successfully.',
         int $status = Response::HTTP_OK,
     ): JsonResponse {
         return $this->successResponse(
-            data: $paginator->items(),
+            data: $data ?? $paginator->items(),
             message: $message,
             status: $status,
             meta: [
