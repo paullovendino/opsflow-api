@@ -8,9 +8,11 @@ use App\Models\Department;
 use App\Models\JobTitle;
 use App\Models\Role;
 use App\Models\User;
+use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -30,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
             'department' => Department::class,
             'job_title' => JobTitle::class,
         ]);
+
+        Gate::policy(User::class, UserPolicy::class);
 
         $this->configureRateLimiting();
     }

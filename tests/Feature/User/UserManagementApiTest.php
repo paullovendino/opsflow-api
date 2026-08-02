@@ -27,6 +27,8 @@ class UserManagementApiTest extends TestCase
 
     private Role $employeeRole;
 
+    private Role $adminRole;
+
     private Department $department;
 
     private JobTitle $jobTitle;
@@ -38,10 +40,11 @@ class UserManagementApiTest extends TestCase
         $this->seed([RolesSeeder::class, DepartmentSeeder::class, JobTitleSeeder::class]);
 
         $this->employeeRole = Role::query()->where('name', RoleName::Employee)->firstOrFail();
+        $this->adminRole = Role::query()->where('name', RoleName::Administrator)->firstOrFail();
         $this->department = Department::query()->where('code', DepartmentCode::Engineering)->firstOrFail();
         $this->jobTitle = JobTitle::query()->where('code', JobTitleCode::SoftwareEngineer)->firstOrFail();
         $this->actor = User::factory()->create([
-            'role_id' => $this->employeeRole->id,
+            'role_id' => $this->adminRole->id,
         ]);
     }
 

@@ -24,6 +24,8 @@ class UserController extends BaseApiController
 
     public function index(IndexUsersRequest $request): JsonResponse
     {
+        $this->authorize('viewAny', User::class);
+
         $users = $this->userService->list($request->filters());
 
         return $this->paginatedResponse(
@@ -35,6 +37,8 @@ class UserController extends BaseApiController
 
     public function show(User $user): JsonResponse
     {
+        $this->authorize('view', $user);
+
         $user = $this->userService->find($user);
 
         return $this->successResponse(
@@ -45,6 +49,8 @@ class UserController extends BaseApiController
 
     public function store(StoreUserRequest $request): JsonResponse
     {
+        $this->authorize('create', User::class);
+
         $user = $this->userService->create($request->validated());
 
         return $this->successResponse(
@@ -56,6 +62,8 @@ class UserController extends BaseApiController
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
+        $this->authorize('update', $user);
+
         $user = $this->userService->update($user, $request->validated());
 
         return $this->successResponse(
@@ -66,6 +74,8 @@ class UserController extends BaseApiController
 
     public function destroy(User $user): JsonResponse
     {
+        $this->authorize('delete', $user);
+
         $this->userService->delete($user);
 
         return $this->successResponse(
@@ -75,6 +85,8 @@ class UserController extends BaseApiController
 
     public function updateStatus(UpdateUserStatusRequest $request, User $user): JsonResponse
     {
+        $this->authorize('updateStatus', $user);
+
         $status = $request->enum('status', UserStatus::class);
 
         $user = $this->userService->changeStatus($user, $status);
