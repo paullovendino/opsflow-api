@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\Department;
 use App\Models\JobTitle;
+use App\Models\Project;
 use App\Models\Role;
 use App\Models\User;
 use App\Policies\UserPolicy;
@@ -31,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
             'role' => Role::class,
             'department' => Department::class,
             'job_title' => JobTitle::class,
+            'project' => Project::class,
         ]);
 
         Gate::policy(User::class, UserPolicy::class);
