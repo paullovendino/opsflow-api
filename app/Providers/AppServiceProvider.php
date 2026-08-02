@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\Department;
+use App\Models\JobTitle;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -25,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
         Relation::enforceMorphMap([
             'user' => User::class,
             'role' => Role::class,
+            'department' => Department::class,
+            'job_title' => JobTitle::class,
         ]);
 
         $this->configureRateLimiting();
