@@ -56,6 +56,9 @@ class Project extends Model
     {
         return $this->belongsToMany(User::class, 'project_members')
             ->withPivot(['joined_at'])
-            ->withTimestamps();
+            ->withTimestamps()
+            ->withCasts([
+                'joined_at' => 'datetime',
+            ]);
     }
 }

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Projects;
 
 use App\Enums\ProjectStatus;
+use App\Enums\UserStatus;
+use App\Exceptions\DuplicateProjectMemberException;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProjectService
 {
@@ -81,5 +84,43 @@ class ProjectService
         ]);
 
         return $project->fresh('owner') ?? $project->load('owner');
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function listMembers(Project $project): Collection
+    {
+        return $project->members()
+            ->orderByPivot('joined_at')
+            ->get();
+    }
+
+    public function addMember(Project $project, int $userId): User
+    {
+        $user = User::query()->findOrFail($userId);
+
+        if ($user->status !== UserStatus::Active) {
+            throw (new ModelNotFoundException)->setModel(User::class, [$userId]);
+        }
+
+        if ($project->members()->where('users.id', $user->id)->exists()) {
+            throw new DuplicateProjectMemberException;
+        }
+
+        $project->members()->attach($user->id, [
+            'joined_at' => now(),
+        ]);
+
+        return $project->members()->where('users.id', $user->id)->firstOrFail();
+    }
+
+    public function removeMember(Project $project, User $user): void
+    {
+        if (! $project->members()->where('users.id', $user->id)->exists()) {
+            throw (new ModelNotFoundException)->setModel(User::class, [$user->id]);
+        }
+
+        $project->members()->detach($user->id);
     }
 }

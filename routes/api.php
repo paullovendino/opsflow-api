@@ -37,6 +37,9 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
         Route::patch('/projects/{project}/status', [ProjectController::class, 'updateStatus'])->name('projects.status');
+        Route::get('/projects/{project}/members', [ProjectController::class, 'members'])->name('projects.members.index');
+        Route::post('/projects/{project}/members', [ProjectController::class, 'storeMember'])->name('projects.members.store');
+        Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'destroyMember'])->name('projects.members.destroy');
 
         Route::prefix('lookups')->group(function (): void {
             Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');

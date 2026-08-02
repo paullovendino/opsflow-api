@@ -38,6 +38,10 @@ final class ApiExceptionRenderer
                 message: $exception->getMessage(),
                 status: Response::HTTP_FORBIDDEN,
             ),
+            $exception instanceof DuplicateProjectMemberException => $this->response(
+                message: $exception->getMessage(),
+                status: Response::HTTP_CONFLICT,
+            ),
             $exception instanceof AuthenticationException => $this->response(
                 message: 'Unauthenticated.',
                 status: Response::HTTP_UNAUTHORIZED,
