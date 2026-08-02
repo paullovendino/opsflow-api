@@ -9,20 +9,33 @@ use App\Enums\UserStatus;
 use App\Exceptions\DuplicateProjectMemberException;
 use App\Models\Project;
 use App\Models\User;
+use App\Queries\Projects\ProjectQuery;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProjectService
 {
+    public function __construct(
+        private readonly ProjectQuery $projectQuery,
+    ) {}
+
     /**
-     * @return Collection<int, Project>
+     * @param  User  $actor
+     * @param  array{
+     *     search?: string|null,
+     *     status?: string|null,
+     *     created_by?: int|null,
+     *     sort?: string,
+     *     direction?: string,
+     *     page?: int,
+     *     per_page?: int
+     * }  $filters
+     * @return LengthAwarePaginator<int, Project>
      */
-    public function list(): Collection
+    public function list(User $actor, array $filters = []): LengthAwarePaginator
     {
-        return Project::query()
-            ->with('owner')
-            ->latest('created_at')
-            ->get();
+        return $this->projectQuery->paginate($filters, $actor);
     }
 
     public function find(Project $project): Project

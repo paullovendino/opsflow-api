@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ProjectStatus;
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\Api\V1\Projects\IndexProjectsRequest;
 use App\Http\Requests\Api\V1\Projects\StoreProjectMemberRequest;
 use App\Http\Requests\Api\V1\Projects\StoreProjectRequest;
 use App\Http\Requests\Api\V1\Projects\UpdateProjectRequest;
@@ -24,11 +25,20 @@ class ProjectController extends BaseApiController
         private readonly ProjectService $projectService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(IndexProjectsRequest $request): JsonResponse
     {
-        $projects = $this->projectService->list();
+        $this->authorize('viewAny', Project::class);
 
-        return $this->successResponse(
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $projects = $this->projectService->list(
+            actor: $actor,
+            filters: $request->filters(),
+        );
+
+        return $this->paginatedResponse(
+            paginator: $projects,
             data: ProjectResource::collection($projects),
             message: 'Projects retrieved successfully.',
         );
@@ -36,6 +46,8 @@ class ProjectController extends BaseApiController
 
     public function show(Project $project): JsonResponse
     {
+        $this->authorize('view', $project);
+
         $project = $this->projectService->find($project);
 
         return $this->successResponse(
@@ -46,6 +58,8 @@ class ProjectController extends BaseApiController
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
+        $this->authorize('create', Project::class);
+
         /** @var User $user */
         $user = $request->user();
 
@@ -60,6 +74,8 @@ class ProjectController extends BaseApiController
 
     public function update(UpdateProjectRequest $request, Project $project): JsonResponse
     {
+        $this->authorize('update', $project);
+
         $project = $this->projectService->update($project, $request->validated());
 
         return $this->successResponse(
@@ -70,6 +86,8 @@ class ProjectController extends BaseApiController
 
     public function destroy(Project $project): JsonResponse
     {
+        $this->authorize('delete', $project);
+
         $this->projectService->delete($project);
 
         return $this->successResponse(
@@ -79,6 +97,8 @@ class ProjectController extends BaseApiController
 
     public function updateStatus(UpdateProjectStatusRequest $request, Project $project): JsonResponse
     {
+        $this->authorize('updateStatus', $project);
+
         $status = $request->enum('status', ProjectStatus::class);
 
         $project = $this->projectService->changeStatus($project, $status);
@@ -91,6 +111,8 @@ class ProjectController extends BaseApiController
 
     public function members(Project $project): JsonResponse
     {
+        $this->authorize('view', $project);
+
         $members = $this->projectService->listMembers($project);
 
         return $this->successResponse(
@@ -101,6 +123,8 @@ class ProjectController extends BaseApiController
 
     public function storeMember(StoreProjectMemberRequest $request, Project $project): JsonResponse
     {
+        $this->authorize('manageMembers', $project);
+
         /** @var array{user_id: int} $validated */
         $validated = $request->validated();
 
@@ -115,6 +139,8 @@ class ProjectController extends BaseApiController
 
     public function destroyMember(Project $project, User $user): JsonResponse
     {
+        $this->authorize('manageMembers', $project);
+
         $this->projectService->removeMember($project, $user);
 
         return $this->successResponse(

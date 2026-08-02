@@ -128,7 +128,18 @@ class ProjectManagementApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Projects retrieved successfully.')
-            ->assertJsonPath('meta', null);
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonStructure([
+                'meta' => [
+                    'current_page',
+                    'last_page',
+                    'per_page',
+                    'total',
+                    'from',
+                    'to',
+                ],
+            ]);
 
         $this->assertCount(2, $response->json('data'));
         $this->assertIsArray($response->json('data.0.owner'));
