@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\JobTitle;
 use App\Models\Project;
 use App\Models\Role;
+use App\Models\Task;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
 use App\Policies\UserPolicy;
@@ -34,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
             'department' => Department::class,
             'job_title' => JobTitle::class,
             'project' => Project::class,
+            'task' => Task::class,
         ]);
 
         Gate::policy(User::class, UserPolicy::class);
