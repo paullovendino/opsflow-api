@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
 use App\Policies\ProjectPolicy;
+use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -40,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
+        Gate::policy(Task::class, TaskPolicy::class);
 
         $this->configureRateLimiting();
     }

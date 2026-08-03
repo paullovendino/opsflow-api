@@ -32,9 +32,9 @@ class TaskService
      * }  $filters
      * @return LengthAwarePaginator<int, Task>
      */
-    public function list(array $filters = []): LengthAwarePaginator
+    public function list(User $actor, array $filters = []): LengthAwarePaginator
     {
-        return $this->taskQuery->paginate($filters);
+        return $this->taskQuery->paginate($filters, $actor);
     }
 
     public function find(Task $task): Task

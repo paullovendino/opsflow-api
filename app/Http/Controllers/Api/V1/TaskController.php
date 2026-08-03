@@ -24,7 +24,13 @@ class TaskController extends BaseApiController
 
     public function index(IndexTasksRequest $request): JsonResponse
     {
+        $this->authorize('viewAny', Task::class);
+
+        /** @var User $actor */
+        $actor = $request->user();
+
         $tasks = $this->taskService->list(
+            actor: $actor,
             filters: $request->filters(),
         );
 
@@ -37,6 +43,8 @@ class TaskController extends BaseApiController
 
     public function show(Task $task): JsonResponse
     {
+        $this->authorize('view', $task);
+
         $task = $this->taskService->find($task);
 
         return $this->successResponse(
@@ -47,6 +55,8 @@ class TaskController extends BaseApiController
 
     public function store(StoreTaskRequest $request): JsonResponse
     {
+        $this->authorize('create', Task::class);
+
         /** @var User $user */
         $user = $request->user();
 
@@ -61,6 +71,8 @@ class TaskController extends BaseApiController
 
     public function update(UpdateTaskRequest $request, Task $task): JsonResponse
     {
+        $this->authorize('update', $task);
+
         $task = $this->taskService->update($task, $request->validated());
 
         return $this->successResponse(
@@ -71,6 +83,8 @@ class TaskController extends BaseApiController
 
     public function destroy(Task $task): JsonResponse
     {
+        $this->authorize('delete', $task);
+
         $this->taskService->delete($task);
 
         return $this->successResponse(
@@ -80,6 +94,8 @@ class TaskController extends BaseApiController
 
     public function updateAssignment(UpdateTaskAssignmentRequest $request, Task $task): JsonResponse
     {
+        $this->authorize('updateAssignment', $task);
+
         /** @var array{assigned_to: int|null} $validated */
         $validated = $request->validated();
 

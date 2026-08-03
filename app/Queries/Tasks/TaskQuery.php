@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Queries\Tasks;
 
+use App\Enums\RoleName;
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -44,10 +46,11 @@ class TaskQuery
      * }  $filters
      * @return LengthAwarePaginator<int, Task>
      */
-    public function paginate(array $filters): LengthAwarePaginator
+    public function paginate(array $filters, User $actor): LengthAwarePaginator
     {
         $query = Task::query()->with(['project', 'assignee', 'creator']);
 
+        $this->applyVisibility($query, $actor);
         $this->applySearch($query, $filters['search'] ?? null);
         $this->applyFilters($query, $filters);
         $this->applySort(
@@ -60,6 +63,32 @@ class TaskQuery
             perPage: (int) ($filters['per_page'] ?? self::DEFAULT_PER_PAGE),
             page: (int) ($filters['page'] ?? 1),
         );
+    }
+
+    /**
+     * Employees see only tasks in owned or member projects; administrators and project managers see all.
+     *
+     * @param  Builder<Task>  $query
+     */
+    private function applyVisibility(Builder $query, User $actor): void
+    {
+        $actor->loadMissing('role');
+
+        $role = $actor->role?->name;
+
+        if ($role === RoleName::Administrator || $role === RoleName::ProjectManager) {
+            return;
+        }
+
+        $query->whereHas('project', function (Builder $project) use ($actor): void {
+            $project->where(function (Builder $builder) use ($actor): void {
+                $builder->where('created_by', $actor->id)
+                    ->orWhereHas(
+                        'members',
+                        fn (Builder $members): Builder => $members->where('users.id', $actor->id),
+                    );
+            });
+        });
     }
 
     /**
