@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\TaskStatus;
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\Tasks\IndexTasksRequest;
 use App\Http\Requests\Api\V1\Tasks\StoreTaskRequest;
 use App\Http\Requests\Api\V1\Tasks\UpdateTaskAssignmentRequest;
 use App\Http\Requests\Api\V1\Tasks\UpdateTaskRequest;
+use App\Http\Requests\Api\V1\Tasks\UpdateTaskStatusRequest;
 use App\Http\Resources\Api\V1\TaskResource;
 use App\Models\Task;
 use App\Models\User;
@@ -107,6 +109,20 @@ class TaskController extends BaseApiController
         return $this->successResponse(
             data: new TaskResource($task),
             message: 'Task assignment updated successfully.',
+        );
+    }
+
+    public function updateStatus(UpdateTaskStatusRequest $request, Task $task): JsonResponse
+    {
+        $this->authorize('updateStatus', $task);
+
+        $status = $request->enum('status', TaskStatus::class);
+
+        $task = $this->taskService->changeStatus($task, $status);
+
+        return $this->successResponse(
+            data: new TaskResource($task),
+            message: 'Task status updated successfully.',
         );
     }
 }

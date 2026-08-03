@@ -103,4 +103,14 @@ class TaskService
         return $task->fresh(['project', 'assignee', 'creator'])
             ?? $task->load(['project', 'assignee', 'creator']);
     }
+
+    public function changeStatus(Task $task, TaskStatus $status): Task
+    {
+        $task->update([
+            'status' => $status,
+        ]);
+
+        return $task->fresh(['project', 'assignee', 'creator'])
+            ?? $task->load(['project', 'assignee', 'creator']);
+    }
 }
