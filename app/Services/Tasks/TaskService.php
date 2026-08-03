@@ -80,4 +80,14 @@ class TaskService
     {
         $task->delete();
     }
+
+    public function changeAssignment(Task $task, ?int $assignedTo): Task
+    {
+        $task->update([
+            'assigned_to' => $assignedTo,
+        ]);
+
+        return $task->fresh(['project', 'assignee', 'creator'])
+            ?? $task->load(['project', 'assignee', 'creator']);
+    }
 }

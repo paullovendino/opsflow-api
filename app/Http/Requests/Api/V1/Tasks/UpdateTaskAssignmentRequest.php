@@ -1,0 +1,87 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Api\V1\Tasks;
+
+use App\Enums\UserStatus;
+use App\Models\Task;
+use App\Models\User;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+
+class UpdateTaskAssignmentRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'assigned_to' => [
+                'present',
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')
+                    ->whereNull('deleted_at')
+                    ->where('status', UserStatus::Active->value),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'assigned_to.exists' => 'The selected assignee must be an active, non-deleted account.',
+        ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $assignedTo = $this->input('assigned_to');
+
+            if ($assignedTo === null || $assignedTo === '') {
+                return;
+            }
+
+            /** @var Task $task */
+            $task = $this->route('task');
+            $project = $task->project()->first();
+
+            if ($project === null) {
+                return;
+            }
+
+            /** @var User|null $assignee */
+            $assignee = User::query()->find($assignedTo);
+
+            if ($assignee === null) {
+                return;
+            }
+
+            $isOwner = (int) $project->created_by === (int) $assignee->id;
+            $isMember = $project->members()->where('users.id', $assignee->id)->exists();
+
+            if (! $isOwner && ! $isMember) {
+                $validator->errors()->add(
+                    'assigned_to',
+                    'The selected assignee must be the project owner or a project member.',
+                );
+            }
+        });
+    }
+}

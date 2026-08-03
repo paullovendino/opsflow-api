@@ -47,6 +47,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+        Route::patch('/tasks/{task}/assignment', [TaskController::class, 'updateAssignment'])->name('tasks.assignment');
 
         Route::prefix('lookups')->group(function (): void {
             Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');

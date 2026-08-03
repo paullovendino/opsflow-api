@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Requests\Api\V1\Tasks\StoreTaskRequest;
+use App\Http\Requests\Api\V1\Tasks\UpdateTaskAssignmentRequest;
 use App\Http\Requests\Api\V1\Tasks\UpdateTaskRequest;
 use App\Http\Resources\Api\V1\TaskResource;
 use App\Models\Task;
@@ -70,6 +71,22 @@ class TaskController extends BaseApiController
 
         return $this->successResponse(
             message: 'Task deleted successfully.',
+        );
+    }
+
+    public function updateAssignment(UpdateTaskAssignmentRequest $request, Task $task): JsonResponse
+    {
+        /** @var array{assigned_to: int|null} $validated */
+        $validated = $request->validated();
+
+        $task = $this->taskService->changeAssignment(
+            $task,
+            $validated['assigned_to'] ?? null,
+        );
+
+        return $this->successResponse(
+            data: new TaskResource($task),
+            message: 'Task assignment updated successfully.',
         );
     }
 }
