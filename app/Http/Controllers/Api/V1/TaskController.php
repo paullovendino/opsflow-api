@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\BaseApiController;
+use App\Http\Requests\Api\V1\Tasks\IndexTasksRequest;
 use App\Http\Requests\Api\V1\Tasks\StoreTaskRequest;
 use App\Http\Requests\Api\V1\Tasks\UpdateTaskAssignmentRequest;
 use App\Http\Requests\Api\V1\Tasks\UpdateTaskRequest;
@@ -21,11 +22,14 @@ class TaskController extends BaseApiController
         private readonly TaskService $taskService,
     ) {}
 
-    public function index(): JsonResponse
+    public function index(IndexTasksRequest $request): JsonResponse
     {
-        $tasks = $this->taskService->list();
+        $tasks = $this->taskService->list(
+            filters: $request->filters(),
+        );
 
-        return $this->successResponse(
+        return $this->paginatedResponse(
+            paginator: $tasks,
             data: TaskResource::collection($tasks),
             message: 'Tasks retrieved successfully.',
         );

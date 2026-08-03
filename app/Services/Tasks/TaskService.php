@@ -8,20 +8,33 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use App\Queries\Tasks\TaskQuery;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class TaskService
 {
+    public function __construct(
+        private readonly TaskQuery $taskQuery,
+    ) {}
+
     /**
-     * @return Collection<int, Task>
+     * @param  array{
+     *     search?: string|null,
+     *     status?: string|null,
+     *     priority?: string|null,
+     *     project_id?: int|null,
+     *     assigned_to?: int|null,
+     *     created_by?: int|null,
+     *     sort?: string,
+     *     direction?: string,
+     *     page?: int,
+     *     per_page?: int
+     * }  $filters
+     * @return LengthAwarePaginator<int, Task>
      */
-    public function list(): Collection
+    public function list(array $filters = []): LengthAwarePaginator
     {
-        return Task::query()
-            ->with(['project', 'assignee', 'creator'])
-            ->orderByDesc('created_at')
-            ->orderBy('id')
-            ->get();
+        return $this->taskQuery->paginate($filters);
     }
 
     public function find(Task $task): Task

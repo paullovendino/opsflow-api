@@ -248,7 +248,18 @@ class TaskManagementApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('message', 'Tasks retrieved successfully.')
-            ->assertJsonPath('meta', null);
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('meta.current_page', 1)
+            ->assertJsonStructure([
+                'meta' => [
+                    'current_page',
+                    'last_page',
+                    'per_page',
+                    'total',
+                    'from',
+                    'to',
+                ],
+            ]);
 
         $this->assertCount(2, $response->json('data'));
         $this->assertIsArray($response->json('data.0.project'));
@@ -273,7 +284,8 @@ class TaskManagementApiTest extends TestCase
         $response = $this->actingAs($this->actor)
             ->getJson('/api/v1/tasks');
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonPath('meta.total', 1);
         $this->assertCount(1, $response->json('data'));
         $this->assertSame($visible->id, $response->json('data.0.id'));
     }
