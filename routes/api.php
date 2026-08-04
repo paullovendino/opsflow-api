@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,13 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
 
         Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
+
+        Route::prefix('reports')->group(function (): void {
+            Route::get('/projects', [ReportController::class, 'projects'])->name('reports.projects.index');
+            Route::get('/projects/{project}', [ReportController::class, 'project'])->name('reports.projects.show');
+            Route::get('/employees', [ReportController::class, 'employees'])->name('reports.employees.index');
+            Route::get('/employees/{user}', [ReportController::class, 'employee'])->name('reports.employees.show');
+        });
 
         Route::prefix('lookups')->group(function (): void {
             Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');

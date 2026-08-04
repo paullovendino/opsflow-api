@@ -12,6 +12,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Policies\DashboardPolicy;
 use App\Policies\ProjectPolicy;
+use App\Policies\ReportPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -44,6 +45,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::define('viewDashboard', [DashboardPolicy::class, 'view']);
+        Gate::define('viewAnyProjectReports', [ReportPolicy::class, 'viewAnyProjectReports']);
+        Gate::define('viewProjectReport', [ReportPolicy::class, 'viewProjectReport']);
+        Gate::define('viewAnyEmployeeReports', [ReportPolicy::class, 'viewAnyEmployeeReports']);
+        Gate::define('viewEmployeeReport', [ReportPolicy::class, 'viewEmployeeReport']);
 
         $this->configureRateLimiting();
     }
