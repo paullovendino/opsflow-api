@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\ProjectController;
@@ -49,6 +50,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::patch('/tasks/{task}/assignment', [TaskController::class, 'updateAssignment'])->name('tasks.assignment');
         Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
+
+        Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
 
         Route::prefix('lookups')->group(function (): void {
             Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');

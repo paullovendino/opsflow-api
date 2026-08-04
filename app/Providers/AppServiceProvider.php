@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
+use App\Policies\DashboardPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
+        Gate::define('viewDashboard', [DashboardPolicy::class, 'view']);
 
         $this->configureRateLimiting();
     }
