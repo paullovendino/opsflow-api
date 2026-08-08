@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RemarkController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -65,6 +66,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/tasks/{task}/remarks', [RemarkController::class, 'storeForTask'])->name('tasks.remarks.store');
         Route::put('/remarks/{remark}', [RemarkController::class, 'update'])->name('remarks.update');
         Route::delete('/remarks/{remark}', [RemarkController::class, 'destroy'])->name('remarks.destroy');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Remarks;
 
 use App\Enums\ActivityAction;
+use App\Enums\NotificationType;
 use App\Enums\RoleName;
 use App\Enums\UserStatus;
 use App\Models\Project;
@@ -14,6 +15,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Queries\Remarks\RemarkQuery;
 use App\Services\ActivityLogs\ActivityLogService;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +28,7 @@ class RemarkService
     public function __construct(
         private readonly RemarkQuery $remarkQuery,
         private readonly ActivityLogService $activityLogService,
+        private readonly NotificationService $notificationService,
     ) {}
 
     /**
@@ -72,6 +75,8 @@ class RemarkService
             description: $this->activityDescription('Added a remark', $remarkable),
             properties: $this->activityProperties($remarkable, $mentionIds),
         );
+
+        $this->notifyRemarkRecipients($remark, $remarkable, $author, $mentionIds);
 
         return $remark;
     }
@@ -366,6 +371,103 @@ class RemarkService
         }
 
         return array_merge($properties, $extra);
+    }
+
+    /**
+     * @param  list<int>  $mentionIds
+     */
+    private function notifyRemarkRecipients(Remark $remark, Model $remarkable, User $author, array $mentionIds): void
+    {
+        $mentionedIds = [];
+        foreach ($mentionIds as $id) {
+            if ((int) $id !== (int) $author->id) {
+                $mentionedIds[(int) $id] = (int) $id;
+            }
+        }
+
+        $watcherIds = [];
+        $project = $this->projectFor($remarkable);
+
+        if ($remarkable instanceof Task) {
+            $remarkable->loadMissing('assignee');
+            if ($remarkable->assigned_to !== null) {
+                $watcherIds[(int) $remarkable->assigned_to] = (int) $remarkable->assigned_to;
+            }
+        }
+
+        $watcherIds[(int) $project->created_by] = (int) $project->created_by;
+        unset($watcherIds[(int) $author->id]);
+        foreach ($mentionedIds as $id) {
+            unset($watcherIds[$id]);
+        }
+
+        $userIds = array_values(array_unique([...array_values($mentionedIds), ...array_values($watcherIds)]));
+        if ($userIds === []) {
+            return;
+        }
+
+        $users = User::query()->whereIn('id', $userIds)->get()->keyBy('id');
+
+        foreach ($mentionedIds as $id) {
+            $user = $users->get($id);
+            if (! $user instanceof User) {
+                continue;
+            }
+
+            $this->notificationService->notify(
+                recipient: $user,
+                type: NotificationType::RemarkMentioned,
+                actor: $author,
+                subject: $remark,
+                data: $this->remarkNotificationData($remarkable, $remark, $author, true),
+            );
+        }
+
+        foreach ($watcherIds as $id) {
+            $user = $users->get($id);
+            if (! $user instanceof User) {
+                continue;
+            }
+
+            $this->notificationService->notify(
+                recipient: $user,
+                type: NotificationType::RemarkCreated,
+                actor: $author,
+                subject: $remark,
+                data: $this->remarkNotificationData($remarkable, $remark, $author, false),
+            );
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function remarkNotificationData(Model $remarkable, Remark $remark, User $author, bool $mentioned): array
+    {
+        if ($remarkable instanceof Task) {
+            return [
+                'title' => $mentioned ? 'You were mentioned' : 'New remark on your work',
+                'message' => $mentioned
+                    ? "{$author->full_name} mentioned you on task {$remarkable->title}."
+                    : "{$author->full_name} added a remark on task {$remarkable->title}.",
+                'target_type' => 'task',
+                'target_id' => (int) $remarkable->id,
+                'project_id' => (int) $remarkable->project_id,
+                'remark_id' => (int) $remark->id,
+            ];
+        }
+
+        $name = $remarkable instanceof Project ? $remarkable->name : 'a record';
+
+        return [
+            'title' => $mentioned ? 'You were mentioned' : 'New remark on your work',
+            'message' => $mentioned
+                ? "{$author->full_name} mentioned you on project {$name}."
+                : "{$author->full_name} added a remark on project {$name}.",
+            'target_type' => 'project',
+            'target_id' => (int) $remarkable->getKey(),
+            'remark_id' => (int) $remark->id,
+        ];
     }
 
     private function activityDescription(string $verb, Model $remarkable): string

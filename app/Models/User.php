@@ -30,6 +30,11 @@ use Laravel\Sanctum\HasApiTokens;
     'avatar',
     'status',
     'last_login_at',
+    'theme_preference',
+    'notify_task_assigned',
+    'notify_task_status',
+    'notify_remarks',
+    'notify_mentions',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -47,6 +52,10 @@ class User extends Authenticatable
             'password' => 'hashed',
             'status' => UserStatus::class,
             'last_login_at' => 'datetime',
+            'notify_task_assigned' => 'boolean',
+            'notify_task_status' => 'boolean',
+            'notify_remarks' => 'boolean',
+            'notify_mentions' => 'boolean',
         ];
     }
 
@@ -103,5 +112,10 @@ class User extends Authenticatable
     public function assignedTasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assigned_to');
+    }
+
+    public function receivedNotifications(): HasMany
+    {
+        return $this->hasMany(Notification::class, 'recipient_id');
     }
 }

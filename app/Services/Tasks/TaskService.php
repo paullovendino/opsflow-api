@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Tasks;
 
 use App\Enums\ActivityAction;
+use App\Enums\NotificationType;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Models\User;
 use App\Queries\Tasks\TaskQuery;
 use App\Services\ActivityLogs\ActivityLogService;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class TaskService
@@ -18,6 +20,7 @@ class TaskService
     public function __construct(
         private readonly TaskQuery $taskQuery,
         private readonly ActivityLogService $activityLogService,
+        private readonly NotificationService $notificationService,
     ) {}
 
     /**
@@ -102,6 +105,16 @@ class TaskService
                     'project_id' => $task->project_id,
                 ],
             );
+
+            if ($task->assignee !== null) {
+                $this->notificationService->notify(
+                    recipient: $task->assignee,
+                    type: NotificationType::TaskAssigned,
+                    actor: $creator,
+                    subject: $task,
+                    data: $this->assignmentNotificationData($task, $creator),
+                );
+            }
         }
 
         return $task;
@@ -273,6 +286,16 @@ class TaskService
             ],
         );
 
+        if ($task->assignee !== null) {
+            $this->notificationService->notify(
+                recipient: $task->assignee,
+                type: NotificationType::TaskAssigned,
+                actor: $actor,
+                subject: $task,
+                data: $this->assignmentNotificationData($task, $actor),
+            );
+        }
+
         return $task;
     }
 
@@ -308,6 +331,28 @@ class TaskService
             ],
         );
 
+        if ($task->assignee !== null) {
+            $this->notificationService->notify(
+                recipient: $task->assignee,
+                type: NotificationType::TaskStatusChanged,
+                actor: $actor,
+                subject: $task,
+                data: [
+                    'title' => 'Task status updated',
+                    'message' => sprintf(
+                        '%s changed %s from %s to %s.',
+                        $actor->full_name,
+                        $task->title,
+                        $this->statusLabel($previous),
+                        $status->label(),
+                    ),
+                    'target_type' => 'task',
+                    'target_id' => (int) $task->id,
+                    'project_id' => (int) $task->project_id,
+                ],
+            );
+        }
+
         return $task;
     }
 
@@ -332,6 +377,20 @@ class TaskService
         $priority = TaskPriority::tryFrom((string) $value);
 
         return $priority?->label() ?? (string) $value;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function assignmentNotificationData(Task $task, User $actor): array
+    {
+        return [
+            'title' => 'You were assigned a task',
+            'message' => "{$actor->full_name} assigned {$task->title} to you.",
+            'target_type' => 'task',
+            'target_id' => (int) $task->id,
+            'project_id' => (int) $task->project_id,
+        ];
     }
 
     private function dueDateDescription(?string $from, ?string $to): string

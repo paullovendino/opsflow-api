@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Projects;
 
 use App\Enums\ActivityAction;
+use App\Enums\NotificationType;
 use App\Enums\ProjectStatus;
 use App\Enums\UserStatus;
 use App\Exceptions\DuplicateProjectMemberException;
@@ -12,6 +13,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Queries\Projects\ProjectQuery;
 use App\Services\ActivityLogs\ActivityLogService;
+use App\Services\Notifications\NotificationService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -21,6 +23,7 @@ class ProjectService
     public function __construct(
         private readonly ProjectQuery $projectQuery,
         private readonly ActivityLogService $activityLogService,
+        private readonly NotificationService $notificationService,
     ) {}
 
     /**
@@ -203,6 +206,19 @@ class ProjectService
             properties: [
                 'member_user_id' => $member->id,
                 'member_full_name' => $member->full_name,
+            ],
+        );
+
+        $this->notificationService->notify(
+            recipient: $member,
+            type: NotificationType::ProjectMemberAdded,
+            actor: $actor,
+            subject: $project,
+            data: [
+                'title' => 'Added to a project',
+                'message' => "{$actor->full_name} added you to {$project->name}.",
+                'target_type' => 'project',
+                'target_id' => (int) $project->id,
             ],
         );
 
