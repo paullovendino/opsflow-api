@@ -180,4 +180,15 @@ class EmployeeReportApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['to_date']);
     }
+
+    public function test_employee_report_list_can_be_empty(): void
+    {
+        $response = $this->actingAs($this->administrator)
+            ->getJson('/api/v1/reports/employees?search=NoSuchEmployee');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('meta.total', 0);
+    }
 }

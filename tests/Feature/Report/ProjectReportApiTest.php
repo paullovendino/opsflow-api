@@ -208,4 +208,17 @@ class ProjectReportApiTest extends TestCase
         $clamped->assertOk()
             ->assertJsonPath('meta.per_page', 100);
     }
+
+    public function test_project_report_list_can_be_empty(): void
+    {
+        $this->project->delete();
+
+        $response = $this->actingAs($this->administrator)
+            ->getJson('/api/v1/reports/projects');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('meta.total', 0);
+    }
 }

@@ -151,4 +151,31 @@ class AuthenticationTest extends TestCase
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'Unauthenticated.');
     }
+
+    public function test_login_is_rate_limited_after_five_attempts(): void
+    {
+        User::factory()->create([
+            'email' => 'throttle@opsflow.test',
+        ]);
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->withHeader('Origin', self::STATEFUL_ORIGIN)
+                ->postJson('/api/v1/auth/login', [
+                    'email' => 'throttle@opsflow.test',
+                    'password' => 'wrong-password',
+                ])
+                ->assertUnauthorized();
+        }
+
+        $response = $this->withHeader('Origin', self::STATEFUL_ORIGIN)
+            ->postJson('/api/v1/auth/login', [
+                'email' => 'throttle@opsflow.test',
+                'password' => 'wrong-password',
+            ]);
+
+        $response->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('data', null)
+            ->assertJsonPath('meta', null);
+    }
 }

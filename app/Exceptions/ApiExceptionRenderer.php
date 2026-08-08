@@ -10,6 +10,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -41,6 +42,10 @@ final class ApiExceptionRenderer
             $exception instanceof DuplicateProjectMemberException => $this->response(
                 message: $exception->getMessage(),
                 status: Response::HTTP_CONFLICT,
+            ),
+            $exception instanceof TokenMismatchException => $this->response(
+                message: $exception->getMessage() ?: 'CSRF token mismatch.',
+                status: 419,
             ),
             $exception instanceof AuthenticationException => $this->response(
                 message: 'Unauthenticated.',
