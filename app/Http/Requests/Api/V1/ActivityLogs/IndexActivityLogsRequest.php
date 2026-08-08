@@ -39,7 +39,7 @@ class IndexActivityLogsRequest extends FormRequest
         return [
             'actor_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'action' => ['sometimes', 'nullable', 'string', Rule::enum(ActivityAction::class)],
-            'subject_type' => ['sometimes', 'nullable', 'string', Rule::in(['user', 'project', 'task'])],
+            'subject_type' => ['sometimes', 'nullable', 'string', Rule::in(['user', 'project', 'task', 'remark'])],
             'subject_id' => ['sometimes', 'nullable', 'integer', 'min:1'],
             'from' => ['sometimes', 'nullable', 'date'],
             'to' => ['sometimes', 'nullable', 'date', 'after_or_equal:from'],

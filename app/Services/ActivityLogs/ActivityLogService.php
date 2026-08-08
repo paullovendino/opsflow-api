@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Queries\ActivityLogs\ActivityLogQuery;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class ActivityLogService
 {
@@ -56,7 +57,87 @@ class ActivityLogService
      */
     public function list(array $filters = [], ?Model $subject = null): LengthAwarePaginator
     {
-        return $this->activityLogQuery->paginate($filters, $subject);
+        $paginator = $this->activityLogQuery->paginate($filters, $subject);
+        $this->enrichAssigneeNames($paginator->items());
+
+        return $paginator;
+    }
+
+    /**
+     * Resolve missing assigned_to_name values for older logs (IDs only) without N+1.
+     *
+     * @param  iterable<int, ActivityLog>  $logs
+     */
+    private function enrichAssigneeNames(iterable $logs): void
+    {
+        $ids = [];
+
+        foreach ($logs as $log) {
+            $properties = is_array($log->properties) ? $log->properties : [];
+
+            foreach (['before', 'after'] as $side) {
+                if (! isset($properties[$side]) || ! is_array($properties[$side])) {
+                    continue;
+                }
+
+                $name = $properties[$side]['assigned_to_name'] ?? null;
+                $assignedTo = $properties[$side]['assigned_to'] ?? null;
+
+                if (($name === null || $name === '') && is_numeric($assignedTo)) {
+                    $ids[] = (int) $assignedTo;
+                }
+            }
+        }
+
+        if ($ids === []) {
+            return;
+        }
+
+        /** @var Collection<int, string> $namesById */
+        $namesById = User::withTrashed()
+            ->whereIn('id', array_values(array_unique($ids)))
+            ->get()
+            ->mapWithKeys(static fn (User $user): array => [(int) $user->id => $user->full_name]);
+
+        foreach ($logs as $log) {
+            $properties = is_array($log->properties) ? $log->properties : [];
+            $changed = false;
+
+            foreach (['before', 'after'] as $side) {
+                if (! isset($properties[$side]) || ! is_array($properties[$side])) {
+                    continue;
+                }
+
+                if (! array_key_exists('assigned_to', $properties[$side])) {
+                    continue;
+                }
+
+                $existingName = $properties[$side]['assigned_to_name'] ?? null;
+                if (is_string($existingName) && $existingName !== '') {
+                    continue;
+                }
+
+                $assignedTo = $properties[$side]['assigned_to'];
+                if ($assignedTo === null || $assignedTo === '') {
+                    $properties[$side]['assigned_to_name'] = null;
+                    $changed = true;
+
+                    continue;
+                }
+
+                if (! is_numeric($assignedTo)) {
+                    continue;
+                }
+
+                $userId = (int) $assignedTo;
+                $properties[$side]['assigned_to_name'] = $namesById->get($userId) ?? 'User #'.$userId;
+                $changed = true;
+            }
+
+            if ($changed) {
+                $log->setAttribute('properties', $properties);
+            }
+        }
     }
 
     /**

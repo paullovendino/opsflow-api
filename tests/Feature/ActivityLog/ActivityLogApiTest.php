@@ -243,6 +243,45 @@ class ActivityLogApiTest extends TestCase
             ->assertJsonPath('data.0.subject.title', 'Accessible Task');
     }
 
+    public function test_assignment_activity_enriches_missing_assignee_names_for_legacy_logs(): void
+    {
+        $previousAssignee = User::factory()->create([
+            'first_name' => 'Renz',
+            'last_name' => 'Patalay',
+            'email' => 'renz@opsflow.test',
+        ]);
+        $nextAssignee = User::factory()->create([
+            'first_name' => 'Mark',
+            'middle_name' => 'Middle',
+            'last_name' => 'Dela Cruz',
+            'email' => 'mark@opsflow.test',
+        ]);
+
+        ActivityLog::factory()->create([
+            'actor_id' => $this->administrator->id,
+            'action' => ActivityAction::TaskAssigned,
+            'subject_type' => $this->accessibleTask->getMorphClass(),
+            'subject_id' => $this->accessibleTask->id,
+            'description' => 'Assigned task Accessible Task to Mark Middle Dela Cruz.',
+            'properties' => [
+                'before' => ['assigned_to' => $previousAssignee->id],
+                'after' => ['assigned_to' => $nextAssignee->id],
+                'project_id' => $this->accessibleProject->id,
+            ],
+            'created_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->administrator)
+            ->getJson("/api/v1/tasks/{$this->accessibleTask->id}/activity-logs");
+
+        $response->assertOk()
+            ->assertJsonPath('data.0.action', ActivityAction::TaskAssigned->value)
+            ->assertJsonPath('data.0.properties.before.assigned_to', $previousAssignee->id)
+            ->assertJsonPath('data.0.properties.before.assigned_to_name', 'Renz Patalay')
+            ->assertJsonPath('data.0.properties.after.assigned_to', $nextAssignee->id)
+            ->assertJsonPath('data.0.properties.after.assigned_to_name', 'Mark Middle Dela Cruz');
+    }
+
     public function test_employee_can_view_own_user_timeline_only(): void
     {
         $this->actingAs($this->employee)

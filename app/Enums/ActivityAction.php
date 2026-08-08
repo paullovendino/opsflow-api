@@ -26,4 +26,8 @@ enum ActivityAction: string
     case TaskStatusChanged = 'task.status_changed';
     case TaskPriorityChanged = 'task.priority_changed';
     case TaskDueDateChanged = 'task.due_date_changed';
+
+    case RemarkCreated = 'remark.created';
+    case RemarkUpdated = 'remark.updated';
+    case RemarkDeleted = 'remark.deleted';
 }

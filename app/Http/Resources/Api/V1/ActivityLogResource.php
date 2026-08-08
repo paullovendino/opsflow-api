@@ -7,6 +7,7 @@ namespace App\Http\Resources\Api\V1;
 use App\Enums\ActivityAction;
 use App\Models\ActivityLog;
 use App\Models\Project;
+use App\Models\Remark;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -84,6 +85,10 @@ class ActivityLogResource extends JsonResource
             $summary['title'] = $subject->title;
         } elseif ($subject instanceof User) {
             $summary['full_name'] = $subject->full_name;
+        } elseif ($subject instanceof Remark) {
+            $summary['body_preview'] = mb_strlen($subject->body) > 80
+                ? mb_substr($subject->body, 0, 79).'…'
+                : $subject->body;
         }
 
         return $summary;

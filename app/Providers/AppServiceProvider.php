@@ -8,12 +8,14 @@ use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\JobTitle;
 use App\Models\Project;
+use App\Models\Remark;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\DashboardPolicy;
 use App\Policies\ProjectPolicy;
+use App\Policies\RemarkPolicy;
 use App\Policies\ReportPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
@@ -42,12 +44,14 @@ class AppServiceProvider extends ServiceProvider
             'project' => Project::class,
             'task' => Task::class,
             'activity_log' => ActivityLog::class,
+            'remark' => Remark::class,
         ]);
 
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(ActivityLog::class, ActivityLogPolicy::class);
+        Gate::policy(Remark::class, RemarkPolicy::class);
         Gate::define('viewDashboard', [DashboardPolicy::class, 'view']);
         Gate::define('viewAnyProjectReports', [ReportPolicy::class, 'viewAnyProjectReports']);
         Gate::define('viewProjectReport', [ReportPolicy::class, 'viewProjectReport']);

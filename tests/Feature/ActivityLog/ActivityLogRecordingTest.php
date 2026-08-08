@@ -231,6 +231,7 @@ class ActivityLogRecordingTest extends TestCase
         $assignedOnCreate = $this->latestLog(ActivityAction::TaskAssigned);
         $this->assertNull($assignedOnCreate->properties['before']['assigned_to']);
         $this->assertSame($assignee->id, $assignedOnCreate->properties['after']['assigned_to']);
+        $this->assertSame('Maria Lopez', $assignedOnCreate->properties['after']['assigned_to_name']);
         $this->assertStringContainsString('Maria Lopez', $assignedOnCreate->description);
 
         $this->taskService->update($task, [
@@ -262,7 +263,9 @@ class ActivityLogRecordingTest extends TestCase
         $this->taskService->changeAssignment($task->fresh(), $other->id, $this->actor);
         $reassigned = $this->latestLog(ActivityAction::TaskAssigned);
         $this->assertSame($assignee->id, $reassigned->properties['before']['assigned_to']);
+        $this->assertSame('Maria Lopez', $reassigned->properties['before']['assigned_to_name']);
         $this->assertSame($other->id, $reassigned->properties['after']['assigned_to']);
+        $this->assertSame('John Reyes', $reassigned->properties['after']['assigned_to_name']);
 
         $this->taskService->changeStatus($task->fresh(), TaskStatus::InProgress, $this->actor);
         $status = $this->latestLog(ActivityAction::TaskStatusChanged);

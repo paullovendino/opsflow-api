@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\RemarkController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TaskController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -57,6 +58,13 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/projects/{project}/activity-logs', [ActivityLogController::class, 'forProject'])->name('projects.activity-logs.index');
         Route::get('/tasks/{task}/activity-logs', [ActivityLogController::class, 'forTask'])->name('tasks.activity-logs.index');
         Route::get('/users/{user}/activity-logs', [ActivityLogController::class, 'forUser'])->name('users.activity-logs.index');
+
+        Route::get('/projects/{project}/remarks', [RemarkController::class, 'forProject'])->name('projects.remarks.index');
+        Route::post('/projects/{project}/remarks', [RemarkController::class, 'storeForProject'])->name('projects.remarks.store');
+        Route::get('/tasks/{task}/remarks', [RemarkController::class, 'forTask'])->name('tasks.remarks.index');
+        Route::post('/tasks/{task}/remarks', [RemarkController::class, 'storeForTask'])->name('tasks.remarks.store');
+        Route::put('/remarks/{remark}', [RemarkController::class, 'update'])->name('remarks.update');
+        Route::delete('/remarks/{remark}', [RemarkController::class, 'destroy'])->name('remarks.destroy');
 
         Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
 

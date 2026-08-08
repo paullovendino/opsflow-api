@@ -91,8 +91,14 @@ class TaskService
                 subject: $task,
                 description: "Assigned task {$task->title} to {$assigneeName}.",
                 properties: [
-                    'before' => ['assigned_to' => null],
-                    'after' => ['assigned_to' => $task->assigned_to],
+                    'before' => [
+                        'assigned_to' => null,
+                        'assigned_to_name' => null,
+                    ],
+                    'after' => [
+                        'assigned_to' => $task->assigned_to,
+                        'assigned_to_name' => $assigneeName,
+                    ],
                     'project_id' => $task->project_id,
                 ],
             );
@@ -205,7 +211,12 @@ class TaskService
 
     public function changeAssignment(Task $task, ?int $assignedTo, User $actor): Task
     {
+        $task->loadMissing('assignee');
+
         $previous = $task->assigned_to !== null ? (int) $task->assigned_to : null;
+        $previousName = $previous !== null
+            ? ($task->assignee?->full_name ?? 'user #'.$previous)
+            : null;
         $next = $assignedTo;
 
         if ($previous === $next) {
@@ -227,8 +238,14 @@ class TaskService
                 subject: $task,
                 description: "Unassigned task {$task->title}.",
                 properties: [
-                    'before' => ['assigned_to' => $previous],
-                    'after' => ['assigned_to' => null],
+                    'before' => [
+                        'assigned_to' => $previous,
+                        'assigned_to_name' => $previousName,
+                    ],
+                    'after' => [
+                        'assigned_to' => null,
+                        'assigned_to_name' => null,
+                    ],
                     'project_id' => $task->project_id,
                 ],
             );
@@ -244,8 +261,14 @@ class TaskService
             subject: $task,
             description: "Assigned task {$task->title} to {$assigneeName}.",
             properties: [
-                'before' => ['assigned_to' => $previous],
-                'after' => ['assigned_to' => $next],
+                'before' => [
+                    'assigned_to' => $previous,
+                    'assigned_to_name' => $previousName,
+                ],
+                'after' => [
+                    'assigned_to' => $next,
+                    'assigned_to_name' => $assigneeName,
+                ],
                 'project_id' => $task->project_id,
             ],
         );
