@@ -76,7 +76,10 @@ class ProjectController extends BaseApiController
     {
         $this->authorize('update', $project);
 
-        $project = $this->projectService->update($project, $request->validated());
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $project = $this->projectService->update($project, $request->validated(), $actor);
 
         return $this->successResponse(
             data: new ProjectResource($project),
@@ -88,7 +91,10 @@ class ProjectController extends BaseApiController
     {
         $this->authorize('delete', $project);
 
-        $this->projectService->delete($project);
+        /** @var User $actor */
+        $actor = request()->user();
+
+        $this->projectService->delete($project, $actor);
 
         return $this->successResponse(
             message: 'Project deleted successfully.',
@@ -101,7 +107,10 @@ class ProjectController extends BaseApiController
 
         $status = $request->enum('status', ProjectStatus::class);
 
-        $project = $this->projectService->changeStatus($project, $status);
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $project = $this->projectService->changeStatus($project, $status, $actor);
 
         return $this->successResponse(
             data: new ProjectResource($project),
@@ -128,7 +137,10 @@ class ProjectController extends BaseApiController
         /** @var array{user_id: int} $validated */
         $validated = $request->validated();
 
-        $member = $this->projectService->addMember($project, $validated['user_id']);
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $member = $this->projectService->addMember($project, $validated['user_id'], $actor);
 
         return $this->successResponse(
             data: new ProjectMemberResource($member),
@@ -141,7 +153,10 @@ class ProjectController extends BaseApiController
     {
         $this->authorize('manageMembers', $project);
 
-        $this->projectService->removeMember($project, $user);
+        /** @var User $actor */
+        $actor = request()->user();
+
+        $this->projectService->removeMember($project, $user, $actor);
 
         return $this->successResponse(
             message: 'Project member removed successfully.',

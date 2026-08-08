@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Projects;
 
+use App\Enums\ActivityAction;
 use App\Enums\ProjectStatus;
 use App\Enums\UserStatus;
 use App\Exceptions\DuplicateProjectMemberException;
 use App\Models\Project;
 use App\Models\User;
 use App\Queries\Projects\ProjectQuery;
+use App\Services\ActivityLogs\ActivityLogService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,6 +20,7 @@ class ProjectService
 {
     public function __construct(
         private readonly ProjectQuery $projectQuery,
+        private readonly ActivityLogService $activityLogService,
     ) {}
 
     /**
@@ -62,7 +65,19 @@ class ProjectService
             'created_by' => $owner->id,
         ]);
 
-        return $project->load('owner');
+        $project = $project->load('owner');
+
+        $this->activityLogService->record(
+            actor: $owner,
+            action: ActivityAction::ProjectCreated,
+            subject: $project,
+            description: "Created project {$project->name}.",
+            properties: [
+                'status' => ProjectStatus::Planning->value,
+            ],
+        );
+
+        return $project;
     }
 
     /**
@@ -73,8 +88,10 @@ class ProjectService
      *     due_date?: string|null
      * }  $data
      */
-    public function update(Project $project, array $data): Project
+    public function update(Project $project, array $data, User $actor): Project
     {
+        $before = $this->projectSnapshot($project);
+
         $project->update([
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
@@ -82,21 +99,72 @@ class ProjectService
             'due_date' => $data['due_date'] ?? null,
         ]);
 
-        return $project->fresh('owner') ?? $project->load('owner');
+        $project = $project->fresh('owner') ?? $project->load('owner');
+        $after = $this->projectSnapshot($project);
+
+        if ($before !== $after) {
+            $this->activityLogService->record(
+                actor: $actor,
+                action: ActivityAction::ProjectUpdated,
+                subject: $project,
+                description: "Updated project {$project->name}.",
+                properties: [
+                    'before' => $before,
+                    'after' => $after,
+                ],
+            );
+        }
+
+        return $project;
     }
 
-    public function delete(Project $project): void
+    public function delete(Project $project, User $actor): void
     {
+        $name = $project->name;
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::ProjectDeleted,
+            subject: $project,
+            description: "Deleted project {$name}.",
+            properties: [
+                'name' => $name,
+            ],
+        );
+
         $project->delete();
     }
 
-    public function changeStatus(Project $project, ProjectStatus $status): Project
+    public function changeStatus(Project $project, ProjectStatus $status, User $actor): Project
     {
+        $previous = $this->scalar($project->status);
+
+        if ($previous === $status->value) {
+            return $project->fresh('owner') ?? $project->load('owner');
+        }
+
         $project->update([
             'status' => $status,
         ]);
 
-        return $project->fresh('owner') ?? $project->load('owner');
+        $project = $project->fresh('owner') ?? $project->load('owner');
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::ProjectStatusChanged,
+            subject: $project,
+            description: sprintf(
+                'Changed project status from %s to %s.',
+                $this->projectStatusLabel($previous),
+                $status->label(),
+            ),
+            properties: [
+                'before' => ['status' => $previous],
+                'after' => ['status' => $status->value],
+            ],
+        );
+
+        return $project;
     }
 
     /**
@@ -109,7 +177,7 @@ class ProjectService
             ->get();
     }
 
-    public function addMember(Project $project, int $userId): User
+    public function addMember(Project $project, int $userId, User $actor): User
     {
         $user = User::query()->findOrFail($userId);
 
@@ -125,15 +193,68 @@ class ProjectService
             'joined_at' => now(),
         ]);
 
-        return $project->members()->where('users.id', $user->id)->firstOrFail();
+        $member = $project->members()->where('users.id', $user->id)->firstOrFail();
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::ProjectMemberAdded,
+            subject: $project,
+            description: "Added {$member->full_name} as a project member.",
+            properties: [
+                'member_user_id' => $member->id,
+                'member_full_name' => $member->full_name,
+            ],
+        );
+
+        return $member;
     }
 
-    public function removeMember(Project $project, User $user): void
+    public function removeMember(Project $project, User $user, User $actor): void
     {
         if (! $project->members()->where('users.id', $user->id)->exists()) {
             throw (new ModelNotFoundException)->setModel(User::class, [$user->id]);
         }
 
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::ProjectMemberRemoved,
+            subject: $project,
+            description: "Removed {$user->full_name} from the project.",
+            properties: [
+                'member_user_id' => $user->id,
+                'member_full_name' => $user->full_name,
+            ],
+        );
+
         $project->members()->detach($user->id);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function projectSnapshot(Project $project): array
+    {
+        return [
+            'name' => $project->name,
+            'description' => $project->description,
+            'start_date' => $project->start_date?->toDateString(),
+            'due_date' => $project->due_date?->toDateString(),
+        ];
+    }
+
+    private function scalar(mixed $value): ?string
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+
+        return $value === null ? null : (string) $value;
+    }
+
+    private function projectStatusLabel(?string $value): string
+    {
+        $status = ProjectStatus::tryFrom((string) $value);
+
+        return $status?->label() ?? (string) $value;
     }
 }

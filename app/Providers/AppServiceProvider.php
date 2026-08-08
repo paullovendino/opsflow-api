@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\JobTitle;
 use App\Models\Project;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
+use App\Policies\ActivityLogPolicy;
 use App\Policies\DashboardPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\ReportPolicy;
@@ -39,11 +41,13 @@ class AppServiceProvider extends ServiceProvider
             'job_title' => JobTitle::class,
             'project' => Project::class,
             'task' => Task::class,
+            'activity_log' => ActivityLog::class,
         ]);
 
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
+        Gate::policy(ActivityLog::class, ActivityLogPolicy::class);
         Gate::define('viewDashboard', [DashboardPolicy::class, 'view']);
         Gate::define('viewAnyProjectReports', [ReportPolicy::class, 'viewAnyProjectReports']);
         Gate::define('viewProjectReport', [ReportPolicy::class, 'viewProjectReport']);

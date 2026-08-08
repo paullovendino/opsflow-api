@@ -54,7 +54,7 @@ class UserDomainFoundationTest extends TestCase
     {
         $this->seed(RolesSeeder::class);
 
-        $this->artisan('migrate:rollback', ['--step' => 4])->assertSuccessful();
+        $this->artisan('migrate:rollback', ['--step' => 5])->assertSuccessful();
 
         $this->assertTrue(Schema::hasColumn('users', 'name'));
         $this->assertFalse(Schema::hasColumn('users', 'first_name'));

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -51,6 +52,11 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::patch('/tasks/{task}/assignment', [TaskController::class, 'updateAssignment'])->name('tasks.assignment');
         Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
+
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+        Route::get('/projects/{project}/activity-logs', [ActivityLogController::class, 'forProject'])->name('projects.activity-logs.index');
+        Route::get('/tasks/{task}/activity-logs', [ActivityLogController::class, 'forTask'])->name('tasks.activity-logs.index');
+        Route::get('/users/{user}/activity-logs', [ActivityLogController::class, 'forUser'])->name('users.activity-logs.index');
 
         Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
 

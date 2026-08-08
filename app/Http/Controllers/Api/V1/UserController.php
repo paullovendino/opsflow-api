@@ -51,7 +51,10 @@ class UserController extends BaseApiController
     {
         $this->authorize('create', User::class);
 
-        $user = $this->userService->create($request->validated());
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $user = $this->userService->create($request->validated(), $actor);
 
         return $this->successResponse(
             data: new UserResource($user),
@@ -64,7 +67,10 @@ class UserController extends BaseApiController
     {
         $this->authorize('update', $user);
 
-        $user = $this->userService->update($user, $request->validated());
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $user = $this->userService->update($user, $request->validated(), $actor);
 
         return $this->successResponse(
             data: new UserResource($user),
@@ -89,7 +95,10 @@ class UserController extends BaseApiController
 
         $status = $request->enum('status', UserStatus::class);
 
-        $user = $this->userService->changeStatus($user, $status);
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $user = $this->userService->changeStatus($user, $status, $actor);
 
         return $this->successResponse(
             data: new UserResource($user),

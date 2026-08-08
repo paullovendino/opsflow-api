@@ -4,17 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Tasks;
 
+use App\Enums\ActivityAction;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Models\User;
 use App\Queries\Tasks\TaskQuery;
+use App\Services\ActivityLogs\ActivityLogService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class TaskService
 {
     public function __construct(
         private readonly TaskQuery $taskQuery,
+        private readonly ActivityLogService $activityLogService,
     ) {}
 
     /**
@@ -65,7 +68,37 @@ class TaskService
             'created_by' => $creator->id,
         ]);
 
-        return $task->load(['project', 'assignee', 'creator']);
+        $task = $task->load(['project', 'assignee', 'creator']);
+
+        $this->activityLogService->record(
+            actor: $creator,
+            action: ActivityAction::TaskCreated,
+            subject: $task,
+            description: "Created task {$task->title}.",
+            properties: [
+                'project_id' => $task->project_id,
+                'priority' => $this->scalar($task->priority),
+                'due_date' => $task->due_date?->toDateString(),
+                'assigned_to' => $task->assigned_to,
+            ],
+        );
+
+        if ($task->assigned_to !== null) {
+            $assigneeName = $task->assignee?->full_name ?? 'user #'.$task->assigned_to;
+            $this->activityLogService->record(
+                actor: $creator,
+                action: ActivityAction::TaskAssigned,
+                subject: $task,
+                description: "Assigned task {$task->title} to {$assigneeName}.",
+                properties: [
+                    'before' => ['assigned_to' => null],
+                    'after' => ['assigned_to' => $task->assigned_to],
+                    'project_id' => $task->project_id,
+                ],
+            );
+        }
+
+        return $task;
     }
 
     /**
@@ -76,8 +109,13 @@ class TaskService
      *     due_date?: string|null
      * }  $data
      */
-    public function update(Task $task, array $data): Task
+    public function update(Task $task, array $data, User $actor): Task
     {
+        $previousTitle = $task->title;
+        $previousDescription = $task->description;
+        $previousPriority = $this->scalar($task->priority);
+        $previousDueDate = $task->due_date?->toDateString();
+
         $task->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -85,32 +123,204 @@ class TaskService
             'due_date' => $data['due_date'] ?? null,
         ]);
 
-        return $task->fresh(['project', 'assignee', 'creator'])
+        $task = $task->fresh(['project', 'assignee', 'creator'])
             ?? $task->load(['project', 'assignee', 'creator']);
+
+        $nextPriority = $this->scalar($task->priority);
+        $nextDueDate = $task->due_date?->toDateString();
+        $coreChanged = $previousTitle !== $task->title || $previousDescription !== $task->description;
+
+        if ($coreChanged) {
+            $this->activityLogService->record(
+                actor: $actor,
+                action: ActivityAction::TaskUpdated,
+                subject: $task,
+                description: "Updated task {$task->title}.",
+                properties: [
+                    'before' => [
+                        'title' => $previousTitle,
+                        'description' => $previousDescription,
+                    ],
+                    'after' => [
+                        'title' => $task->title,
+                        'description' => $task->description,
+                    ],
+                    'project_id' => $task->project_id,
+                ],
+            );
+        }
+
+        if ($previousPriority !== $nextPriority) {
+            $this->activityLogService->record(
+                actor: $actor,
+                action: ActivityAction::TaskPriorityChanged,
+                subject: $task,
+                description: sprintf(
+                    'Changed task priority from %s to %s.',
+                    $this->priorityLabel($previousPriority),
+                    $this->priorityLabel($nextPriority),
+                ),
+                properties: [
+                    'before' => ['priority' => $previousPriority],
+                    'after' => ['priority' => $nextPriority],
+                    'project_id' => $task->project_id,
+                ],
+            );
+        }
+
+        if ($previousDueDate !== $nextDueDate) {
+            $this->activityLogService->record(
+                actor: $actor,
+                action: ActivityAction::TaskDueDateChanged,
+                subject: $task,
+                description: $this->dueDateDescription($previousDueDate, $nextDueDate),
+                properties: [
+                    'before' => ['due_date' => $previousDueDate],
+                    'after' => ['due_date' => $nextDueDate],
+                    'project_id' => $task->project_id,
+                ],
+            );
+        }
+
+        return $task;
     }
 
-    public function delete(Task $task): void
+    public function delete(Task $task, User $actor): void
     {
+        $title = $task->title;
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::TaskDeleted,
+            subject: $task,
+            description: "Deleted task {$title}.",
+            properties: [
+                'title' => $title,
+                'project_id' => $task->project_id,
+            ],
+        );
+
         $task->delete();
     }
 
-    public function changeAssignment(Task $task, ?int $assignedTo): Task
+    public function changeAssignment(Task $task, ?int $assignedTo, User $actor): Task
     {
+        $previous = $task->assigned_to !== null ? (int) $task->assigned_to : null;
+        $next = $assignedTo;
+
+        if ($previous === $next) {
+            return $task->fresh(['project', 'assignee', 'creator'])
+                ?? $task->load(['project', 'assignee', 'creator']);
+        }
+
         $task->update([
             'assigned_to' => $assignedTo,
         ]);
 
-        return $task->fresh(['project', 'assignee', 'creator'])
+        $task = $task->fresh(['project', 'assignee', 'creator'])
             ?? $task->load(['project', 'assignee', 'creator']);
+
+        if ($next === null) {
+            $this->activityLogService->record(
+                actor: $actor,
+                action: ActivityAction::TaskUnassigned,
+                subject: $task,
+                description: "Unassigned task {$task->title}.",
+                properties: [
+                    'before' => ['assigned_to' => $previous],
+                    'after' => ['assigned_to' => null],
+                    'project_id' => $task->project_id,
+                ],
+            );
+
+            return $task;
+        }
+
+        $assigneeName = $task->assignee?->full_name ?? 'user #'.$next;
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::TaskAssigned,
+            subject: $task,
+            description: "Assigned task {$task->title} to {$assigneeName}.",
+            properties: [
+                'before' => ['assigned_to' => $previous],
+                'after' => ['assigned_to' => $next],
+                'project_id' => $task->project_id,
+            ],
+        );
+
+        return $task;
     }
 
-    public function changeStatus(Task $task, TaskStatus $status): Task
+    public function changeStatus(Task $task, TaskStatus $status, User $actor): Task
     {
+        $previous = $this->scalar($task->status);
+
+        if ($previous === $status->value) {
+            return $task->fresh(['project', 'assignee', 'creator'])
+                ?? $task->load(['project', 'assignee', 'creator']);
+        }
+
         $task->update([
             'status' => $status,
         ]);
 
-        return $task->fresh(['project', 'assignee', 'creator'])
+        $task = $task->fresh(['project', 'assignee', 'creator'])
             ?? $task->load(['project', 'assignee', 'creator']);
+
+        $this->activityLogService->record(
+            actor: $actor,
+            action: ActivityAction::TaskStatusChanged,
+            subject: $task,
+            description: sprintf(
+                'Changed task status from %s to %s.',
+                $this->statusLabel($previous),
+                $status->label(),
+            ),
+            properties: [
+                'before' => ['status' => $previous],
+                'after' => ['status' => $status->value],
+                'project_id' => $task->project_id,
+            ],
+        );
+
+        return $task;
+    }
+
+    private function scalar(mixed $value): ?string
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+
+        return $value === null ? null : (string) $value;
+    }
+
+    private function statusLabel(?string $value): string
+    {
+        $status = TaskStatus::tryFrom((string) $value);
+
+        return $status?->label() ?? (string) $value;
+    }
+
+    private function priorityLabel(?string $value): string
+    {
+        $priority = TaskPriority::tryFrom((string) $value);
+
+        return $priority?->label() ?? (string) $value;
+    }
+
+    private function dueDateDescription(?string $from, ?string $to): string
+    {
+        if ($from === null && $to !== null) {
+            return "Set task due date to {$to}.";
+        }
+
+        if ($from !== null && $to === null) {
+            return 'Cleared task due date.';
+        }
+
+        return "Changed task due date from {$from} to {$to}.";
     }
 }

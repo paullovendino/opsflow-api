@@ -75,7 +75,10 @@ class TaskController extends BaseApiController
     {
         $this->authorize('update', $task);
 
-        $task = $this->taskService->update($task, $request->validated());
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $task = $this->taskService->update($task, $request->validated(), $actor);
 
         return $this->successResponse(
             data: new TaskResource($task),
@@ -87,7 +90,10 @@ class TaskController extends BaseApiController
     {
         $this->authorize('delete', $task);
 
-        $this->taskService->delete($task);
+        /** @var User $actor */
+        $actor = request()->user();
+
+        $this->taskService->delete($task, $actor);
 
         return $this->successResponse(
             message: 'Task deleted successfully.',
@@ -101,9 +107,13 @@ class TaskController extends BaseApiController
         /** @var array{assigned_to: int|null} $validated */
         $validated = $request->validated();
 
+        /** @var User $actor */
+        $actor = $request->user();
+
         $task = $this->taskService->changeAssignment(
             $task,
             $validated['assigned_to'] ?? null,
+            $actor,
         );
 
         return $this->successResponse(
@@ -118,7 +128,10 @@ class TaskController extends BaseApiController
 
         $status = $request->enum('status', TaskStatus::class);
 
-        $task = $this->taskService->changeStatus($task, $status);
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $task = $this->taskService->changeStatus($task, $status, $actor);
 
         return $this->successResponse(
             data: new TaskResource($task),
