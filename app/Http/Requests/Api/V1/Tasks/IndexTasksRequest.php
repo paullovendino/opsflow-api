@@ -8,6 +8,7 @@ use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Queries\Tasks\TaskQuery;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class IndexTasksRequest extends FormRequest
@@ -25,12 +26,19 @@ class IndexTasksRequest extends FormRequest
             $perPage = TaskQuery::MAX_PER_PAGE;
         }
 
-        $this->merge([
+        $merge = [
             'page' => $this->input('page', 1),
             'per_page' => $perPage,
             'sort' => $this->input('sort', TaskQuery::DEFAULT_SORT),
             'direction' => strtolower((string) $this->input('direction', TaskQuery::DEFAULT_DIRECTION)),
-        ]);
+        ];
+
+        $overdue = $this->input('overdue');
+        if ($overdue !== null && $overdue !== '') {
+            $merge['overdue'] = filter_var($overdue, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $overdue;
+        }
+
+        $this->merge($merge);
     }
 
     /**
@@ -42,6 +50,9 @@ class IndexTasksRequest extends FormRequest
             'search' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'nullable', Rule::enum(TaskStatus::class)],
             'priority' => ['sometimes', 'nullable', Rule::enum(TaskPriority::class)],
+            'overdue' => ['sometimes', 'nullable', 'boolean'],
+            'due_before' => ['sometimes', 'nullable', 'date'],
+            'due_after' => ['sometimes', 'nullable', 'date'],
             'project_id' => ['sometimes', 'nullable', 'integer', 'exists:projects,id'],
             'assigned_to' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'created_by' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
@@ -57,6 +68,9 @@ class IndexTasksRequest extends FormRequest
      *     search?: string|null,
      *     status?: string|null,
      *     priority?: string|null,
+     *     overdue?: bool,
+     *     due_before?: string|null,
+     *     due_after?: string|null,
      *     project_id?: int|null,
      *     assigned_to?: int|null,
      *     created_by?: int|null,
@@ -72,6 +86,9 @@ class IndexTasksRequest extends FormRequest
          *     search?: string|null,
          *     status?: TaskStatus|string|null,
          *     priority?: TaskPriority|string|null,
+         *     overdue?: bool,
+         *     due_before?: string|null,
+         *     due_after?: string|null,
          *     project_id?: int|null,
          *     assigned_to?: int|null,
          *     created_by?: int|null,
@@ -93,10 +110,27 @@ class IndexTasksRequest extends FormRequest
             $priority = $priority->value;
         }
 
+        $dueBefore = $validated['due_before'] ?? null;
+        if (is_string($dueBefore) && $dueBefore !== '') {
+            $dueBefore = Carbon::parse($dueBefore)->toDateString();
+        } else {
+            $dueBefore = null;
+        }
+
+        $dueAfter = $validated['due_after'] ?? null;
+        if (is_string($dueAfter) && $dueAfter !== '') {
+            $dueAfter = Carbon::parse($dueAfter)->toDateString();
+        } else {
+            $dueAfter = null;
+        }
+
         return [
             'search' => $validated['search'] ?? null,
             'status' => $status,
             'priority' => $priority,
+            'overdue' => (bool) ($validated['overdue'] ?? false),
+            'due_before' => $dueBefore,
+            'due_after' => $dueAfter,
             'project_id' => $validated['project_id'] ?? null,
             'assigned_to' => $validated['assigned_to'] ?? null,
             'created_by' => $validated['created_by'] ?? null,

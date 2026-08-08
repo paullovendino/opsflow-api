@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Queries\Tasks\TaskQuery;
 use Database\Seeders\RolesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class TaskListQueryTest extends TestCase
@@ -31,6 +32,8 @@ class TaskListQueryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Carbon::setTestNow(Carbon::parse('2026-08-08', 'UTC'));
 
         $this->seed(RolesSeeder::class);
 
@@ -57,6 +60,13 @@ class TaskListQueryTest extends TestCase
         ]);
     }
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_list_uses_default_pagination_and_sort(): void
     {
         Task::factory()->count(2)->create([
@@ -79,6 +89,8 @@ class TaskListQueryTest extends TestCase
                         'description',
                         'status',
                         'priority',
+                        'due_date',
+                        'is_overdue',
                         'project',
                         'assignee',
                         'creator',
@@ -374,6 +386,165 @@ class TaskListQueryTest extends TestCase
             ->getJson('/api/v1/tasks?created_by=999999')
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['created_by']);
+
+        $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?overdue=maybe')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['overdue']);
+
+        $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?due_before=not-a-date')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['due_before']);
+
+        $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?due_after=13/40/2026')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['due_after']);
+    }
+
+    public function test_overdue_and_due_range_filters_are_composable(): void
+    {
+        $overdueUrgent = Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Overdue Urgent',
+            'status' => TaskStatus::Todo,
+            'priority' => TaskPriority::Urgent,
+            'due_date' => '2026-08-01',
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Overdue High',
+            'status' => TaskStatus::InProgress,
+            'priority' => TaskPriority::High,
+            'due_date' => '2026-08-02',
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Completed Past Due',
+            'status' => TaskStatus::Completed,
+            'priority' => TaskPriority::Urgent,
+            'due_date' => '2026-08-01',
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Future Urgent',
+            'status' => TaskStatus::Todo,
+            'priority' => TaskPriority::Urgent,
+            'due_date' => '2026-08-20',
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'No Due Date',
+            'status' => TaskStatus::Todo,
+            'priority' => TaskPriority::Urgent,
+            'due_date' => null,
+        ]);
+
+        $overdue = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?overdue=1&per_page=100');
+        $overdue->assertOk();
+        $overdueTitles = collect($overdue->json('data'))->pluck('title');
+        $this->assertTrue($overdueTitles->contains('Overdue Urgent'));
+        $this->assertTrue($overdueTitles->contains('Overdue High'));
+        $this->assertFalse($overdueTitles->contains('Completed Past Due'));
+        $this->assertFalse($overdueTitles->contains('Future Urgent'));
+        $this->assertFalse($overdueTitles->contains('No Due Date'));
+        $this->assertTrue(collect($overdue->json('data'))->every(
+            fn (array $task): bool => $task['is_overdue'] === true
+        ));
+
+        $combined = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?'.http_build_query([
+                'priority' => TaskPriority::Urgent->value,
+                'overdue' => 1,
+                'due_after' => '2026-08-01',
+                'due_before' => '2026-08-31',
+            ]));
+        $combined->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $overdueUrgent->id)
+            ->assertJsonPath('data.0.is_overdue', true);
+
+        $range = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?'.http_build_query([
+                'due_after' => '2026-08-15',
+                'due_before' => '2026-08-31',
+                'per_page' => 100,
+            ]));
+        $range->assertOk();
+        $rangeTitles = collect($range->json('data'))->pluck('title');
+        $this->assertTrue($rangeTitles->contains('Future Urgent'));
+        $this->assertFalse($rangeTitles->contains('Overdue Urgent'));
+        $this->assertFalse($rangeTitles->contains('No Due Date'));
+    }
+
+    public function test_due_date_sort_keeps_nulls_last(): void
+    {
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Null Due',
+            'due_date' => null,
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Earlier Due',
+            'due_date' => '2026-08-01',
+        ]);
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'title' => 'Later Due',
+            'due_date' => '2026-08-20',
+        ]);
+
+        $asc = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?sort=due_date&direction=asc&per_page=100');
+        $asc->assertOk();
+        $ascTitles = collect($asc->json('data'))->pluck('title')->values();
+        $this->assertLessThan(
+            $ascTitles->search('Null Due'),
+            $ascTitles->search('Earlier Due'),
+        );
+        $this->assertLessThan(
+            $ascTitles->search('Later Due'),
+            $ascTitles->search('Earlier Due'),
+        );
+        $this->assertSame('Null Due', $ascTitles->last());
+
+        $desc = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?sort=due_date&direction=desc&per_page=100');
+        $desc->assertOk();
+        $descTitles = collect($desc->json('data'))->pluck('title')->values();
+        $this->assertLessThan(
+            $descTitles->search('Null Due'),
+            $descTitles->search('Later Due'),
+        );
+        $this->assertSame('Null Due', $descTitles->last());
+    }
+
+    public function test_overdue_filter_with_completed_status_can_return_empty(): void
+    {
+        Task::factory()->create([
+            'project_id' => $this->project->id,
+            'created_by' => $this->actor->id,
+            'status' => TaskStatus::Completed,
+            'due_date' => '2026-08-01',
+        ]);
+
+        $response = $this->actingAs($this->actor)
+            ->getJson('/api/v1/tasks?overdue=1&status='.TaskStatus::Completed->value);
+
+        $response->assertOk()
+            ->assertJsonPath('meta.total', 0)
+            ->assertJsonPath('meta.current_page', 1);
     }
 
     public function test_list_excludes_soft_deleted_tasks(): void

@@ -36,6 +36,9 @@ class TaskQuery
      *     search?: string|null,
      *     status?: string|null,
      *     priority?: string|null,
+     *     overdue?: bool,
+     *     due_before?: string|null,
+     *     due_after?: string|null,
      *     project_id?: int|null,
      *     assigned_to?: int|null,
      *     created_by?: int|null,
@@ -122,6 +125,18 @@ class TaskQuery
             $query->where('priority', $filters['priority']);
         }
 
+        if (($filters['overdue'] ?? false) === true) {
+            $query->overdue();
+        }
+
+        if (array_key_exists('due_before', $filters) && is_string($filters['due_before']) && $filters['due_before'] !== '') {
+            $query->whereNotNull('due_date')->whereDate('due_date', '<=', $filters['due_before']);
+        }
+
+        if (array_key_exists('due_after', $filters) && is_string($filters['due_after']) && $filters['due_after'] !== '') {
+            $query->whereNotNull('due_date')->whereDate('due_date', '>=', $filters['due_after']);
+        }
+
         if (array_key_exists('project_id', $filters) && $filters['project_id'] !== null) {
             $query->where('project_id', $filters['project_id']);
         }
@@ -145,6 +160,14 @@ class TaskQuery
         }
 
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
+
+        if ($sort === 'due_date') {
+            $query->orderByRaw('case when due_date is null then 1 else 0 end')
+                ->orderBy('due_date', $direction)
+                ->orderBy('id');
+
+            return;
+        }
 
         $query->orderBy($sort, $direction)->orderBy('id');
     }

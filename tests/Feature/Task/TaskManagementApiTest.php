@@ -443,6 +443,7 @@ class TaskManagementApiTest extends TestCase
                     'status',
                     'priority',
                     'due_date',
+                    'is_overdue',
                     'project' => [
                         'id',
                         'name',
