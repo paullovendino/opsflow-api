@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Queries\Projects;
 
 use App\Enums\RoleName;
+use App\Enums\TaskStatus;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -47,6 +48,7 @@ class ProjectQuery
     public function paginate(array $filters, User $actor): LengthAwarePaginator
     {
         $query = Project::query()->with('owner');
+        $this->applyProgressAggregates($query);
 
         $this->applyVisibility($query, $actor);
         $this->applySearch($query, $filters['search'] ?? null);
@@ -131,5 +133,36 @@ class ProjectQuery
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
 
         $query->orderBy($sort, $direction)->orderBy('id');
+    }
+
+    /**
+     * Attach eligible/completed task counts as correlated aggregates (no N+1).
+     *
+     * @param  Builder<Project>  $query
+     */
+    public function applyProgressAggregates(Builder $query): void
+    {
+        $query->withCount([
+            'tasks as eligible_tasks_count' => function (Builder $tasks): void {
+                $tasks->where('status', '!=', TaskStatus::Cancelled->value);
+            },
+            'tasks as completed_tasks_count' => function (Builder $tasks): void {
+                $tasks->where('status', TaskStatus::Completed->value);
+            },
+        ]);
+    }
+
+    public function hydrateProgress(Project $project): Project
+    {
+        $project->loadCount([
+            'tasks as eligible_tasks_count' => function (Builder $tasks): void {
+                $tasks->where('status', '!=', TaskStatus::Cancelled->value);
+            },
+            'tasks as completed_tasks_count' => function (Builder $tasks): void {
+                $tasks->where('status', TaskStatus::Completed->value);
+            },
+        ]);
+
+        return $project;
     }
 }

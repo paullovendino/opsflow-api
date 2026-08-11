@@ -63,6 +63,7 @@ class ProjectListQueryTest extends TestCase
                         'name',
                         'description',
                         'status',
+                        'progress',
                         'owner',
                         'created_at',
                     ],

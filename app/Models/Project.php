@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProjectStatus;
+use App\Services\Projects\ProjectProgress;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property-read int|null $eligible_tasks_count
+ * @property-read int|null $completed_tasks_count
+ */
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -66,5 +71,13 @@ class Project extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function progressPercent(): ?int
+    {
+        return ProjectProgress::percent(
+            (int) ($this->eligible_tasks_count ?? 0),
+            (int) ($this->completed_tasks_count ?? 0),
+        );
     }
 }

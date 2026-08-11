@@ -308,6 +308,7 @@ class ProjectManagementApiTest extends TestCase
                     'status',
                     'start_date',
                     'due_date',
+                    'progress',
                     'owner' => [
                         'id',
                         'first_name',

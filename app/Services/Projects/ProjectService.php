@@ -46,7 +46,9 @@ class ProjectService
 
     public function find(Project $project): Project
     {
-        return $project->loadMissing('owner');
+        $project->loadMissing('owner');
+
+        return $this->projectQuery->hydrateProgress($project);
     }
 
     /**
@@ -68,7 +70,7 @@ class ProjectService
             'created_by' => $owner->id,
         ]);
 
-        $project = $project->load('owner');
+        $project = $this->projectQuery->hydrateProgress($project->load('owner'));
 
         $this->activityLogService->record(
             actor: $owner,
@@ -102,7 +104,9 @@ class ProjectService
             'due_date' => $data['due_date'] ?? null,
         ]);
 
-        $project = $project->fresh('owner') ?? $project->load('owner');
+        $project = $this->projectQuery->hydrateProgress(
+            $project->fresh('owner') ?? $project->load('owner'),
+        );
         $after = $this->projectSnapshot($project);
 
         if ($before !== $after) {
@@ -143,14 +147,18 @@ class ProjectService
         $previous = $this->scalar($project->status);
 
         if ($previous === $status->value) {
-            return $project->fresh('owner') ?? $project->load('owner');
+            return $this->projectQuery->hydrateProgress(
+                $project->fresh('owner') ?? $project->load('owner'),
+            );
         }
 
         $project->update([
             'status' => $status,
         ]);
 
-        $project = $project->fresh('owner') ?? $project->load('owner');
+        $project = $this->projectQuery->hydrateProgress(
+            $project->fresh('owner') ?? $project->load('owner'),
+        );
 
         $this->activityLogService->record(
             actor: $actor,

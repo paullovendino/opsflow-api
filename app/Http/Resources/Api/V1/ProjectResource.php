@@ -25,6 +25,7 @@ class ProjectResource extends JsonResource
             'status' => $this->status,
             'start_date' => $this->start_date?->toDateString(),
             'due_date' => $this->due_date?->toDateString(),
+            'progress' => $this->progressPercent(),
             'owner' => $this->whenLoaded(
                 'owner',
                 fn (): UserResource => new UserResource($this->owner),
