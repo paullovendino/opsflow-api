@@ -27,6 +27,7 @@ class DashboardController extends BaseApiController
         $summary = $this->dashboardService->summary(
             actor: $actor,
             recentLimit: $request->recentLimit(),
+            activityLimit: $request->activityLimit(),
         );
 
         return $this->successResponse(

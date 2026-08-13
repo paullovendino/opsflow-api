@@ -72,6 +72,7 @@ class DashboardApiTest extends TestCase
                             'completed',
                             'archived',
                         ],
+                        'average_progress',
                     ],
                     'tasks' => [
                         'total',
@@ -91,14 +92,25 @@ class DashboardApiTest extends TestCase
                         ],
                         'overdue',
                         'assigned_to_me',
+                        'due_soon',
                     ],
                     'recent',
+                    'due_soon',
+                    'recent_activity',
+                    'notifications' => [
+                        'unread_count',
+                    ],
                 ],
             ]);
 
         $this->assertSame(0, $response->json('data.projects.total'));
+        $this->assertNull($response->json('data.projects.average_progress'));
         $this->assertSame(0, $response->json('data.tasks.total'));
+        $this->assertSame(0, $response->json('data.tasks.due_soon'));
         $this->assertSame([], $response->json('data.recent'));
+        $this->assertSame([], $response->json('data.due_soon'));
+        $this->assertSame([], $response->json('data.recent_activity'));
+        $this->assertSame(0, $response->json('data.notifications.unread_count'));
     }
 
     public function test_project_and_task_statistics_are_aggregated_with_zero_fill(): void

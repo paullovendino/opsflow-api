@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RemarkController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -74,6 +75,10 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
         Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+
+        Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+        Route::match(['put', 'post'], '/profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::delete('/profile/avatar', [ProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
 
         Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard.show');
 

@@ -16,22 +16,15 @@ class ShowDashboardRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $limit = $this->input('recent_limit', DashboardService::DEFAULT_RECENT_LIMIT);
-
-        if (is_numeric($limit)) {
-            $limit = (int) $limit;
-
-            if ($limit > DashboardService::MAX_RECENT_LIMIT) {
-                $limit = DashboardService::MAX_RECENT_LIMIT;
-            }
-
-            if ($limit < 1) {
-                $limit = 1;
-            }
-        }
-
         $this->merge([
-            'recent_limit' => $limit,
+            'recent_limit' => $this->clampLimit(
+                $this->input('recent_limit', DashboardService::DEFAULT_RECENT_LIMIT),
+                DashboardService::MAX_RECENT_LIMIT,
+            ),
+            'activity_limit' => $this->clampLimit(
+                $this->input('activity_limit', DashboardService::DEFAULT_ACTIVITY_LIMIT),
+                DashboardService::MAX_ACTIVITY_LIMIT,
+            ),
         ]);
     }
 
@@ -47,11 +40,41 @@ class ShowDashboardRequest extends FormRequest
                 'min:1',
                 'max:'.DashboardService::MAX_RECENT_LIMIT,
             ],
+            'activity_limit' => [
+                'sometimes',
+                'integer',
+                'min:1',
+                'max:'.DashboardService::MAX_ACTIVITY_LIMIT,
+            ],
         ];
     }
 
     public function recentLimit(): int
     {
         return (int) ($this->validated()['recent_limit'] ?? DashboardService::DEFAULT_RECENT_LIMIT);
+    }
+
+    public function activityLimit(): int
+    {
+        return (int) ($this->validated()['activity_limit'] ?? DashboardService::DEFAULT_ACTIVITY_LIMIT);
+    }
+
+    private function clampLimit(mixed $limit, int $max): mixed
+    {
+        if (! is_numeric($limit)) {
+            return $limit;
+        }
+
+        $limit = (int) $limit;
+
+        if ($limit > $max) {
+            $limit = $max;
+        }
+
+        if ($limit < 1) {
+            $limit = 1;
+        }
+
+        return $limit;
     }
 }
