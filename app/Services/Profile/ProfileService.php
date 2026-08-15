@@ -8,10 +8,12 @@ use App\Enums\ActivityAction;
 use App\Enums\TaskStatus;
 use App\Http\Resources\Api\V1\ActivityLogResource;
 use App\Models\ActivityLog;
+use App\Models\File;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\ActivityLogs\ActivityLogService;
+use App\Services\Files\FileStorageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -23,12 +25,13 @@ class ProfileService
 {
     public const DEFAULT_ACTIVITY_LIMIT = 10;
 
-    public const AVATAR_DISK = 'public';
+    public const AVATAR_DISK = File::DISK_PUBLIC;
 
     public const AVATAR_MAX_KB = 2048;
 
     public function __construct(
         private readonly ActivityLogService $activityLogService,
+        private readonly FileStorageService $fileStorageService,
     ) {}
 
     /**
@@ -41,7 +44,7 @@ class ProfileService
      */
     public function show(User $user): array
     {
-        $user = $user->loadMissing(['role', 'department', 'jobTitle']);
+        $user = $user->loadMissing(['role', 'department', 'jobTitle', 'avatarFile']);
 
         return [
             'user' => $user,
@@ -100,35 +103,56 @@ class ProfileService
             $attributes['password'] = Hash::make((string) $data['password']);
         }
 
-        $previousAvatarPath = $this->storedAvatarPath($user->avatar);
-        $storedAvatarPath = null;
+        $previousAvatar = $user->avatarFile;
+        $staged = null;
+        $permanent = null;
+        $newAvatar = null;
 
         try {
             if ($avatarFile !== null) {
-                $storedAvatarPath = $this->storeAvatarFile($user, $avatarFile);
-                $attributes['avatar'] = $storedAvatarPath;
+                $extension = $this->extensionForMime((string) $avatarFile->getMimeType());
+                $staged = $this->fileStorageService->stage($avatarFile, $extension);
+                $permanent = $this->fileStorageService->writePermanent(
+                    staged: $staged,
+                    directory: 'avatars/'.$user->id,
+                    disk: self::AVATAR_DISK,
+                );
             }
 
-            if ($attributes !== []) {
-                $user->update($attributes);
-            }
+            DB::transaction(function () use ($user, $attributes, $permanent, &$newAvatar): void {
+                if ($attributes !== []) {
+                    $user->update($attributes);
+                }
+
+                if ($permanent !== null) {
+                    $newAvatar = $this->fileStorageService->createRecord(
+                        stored: $permanent,
+                        attachable: $user,
+                        collection: File::COLLECTION_AVATAR,
+                    );
+                    $user->touch();
+                }
+            });
         } catch (Throwable $exception) {
-            if ($storedAvatarPath !== null) {
-                Storage::disk(self::AVATAR_DISK)->delete($storedAvatarPath);
+            if ($permanent !== null) {
+                $this->fileStorageService->deleteStoredPath($permanent['disk'], $permanent['path']);
             }
 
             throw $exception;
+        } finally {
+            $this->fileStorageService->discard($staged);
         }
 
         if (
-            $avatarFile !== null
-            && $previousAvatarPath !== null
-            && $previousAvatarPath !== $storedAvatarPath
+            $newAvatar instanceof File
+            && $previousAvatar instanceof File
+            && $previousAvatar->id !== $newAvatar->id
         ) {
-            Storage::disk(self::AVATAR_DISK)->delete($previousAvatarPath);
+            $this->fileStorageService->delete($previousAvatar);
         }
 
-        $user = $user->fresh(['role', 'department', 'jobTitle']) ?? $user->load(['role', 'department', 'jobTitle']);
+        $user = $user->fresh(['role', 'department', 'jobTitle', 'avatarFile'])
+            ?? $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
         $after = $this->profileSnapshot($user);
 
         if ($before !== $after || $passwordChanged) {
@@ -164,17 +188,17 @@ class ProfileService
     public function removeAvatar(User $user): array
     {
         $before = $this->profileSnapshot($user);
-        $path = $this->storedAvatarPath($user->avatar);
+        $avatar = $user->avatarFile;
 
-        DB::transaction(function () use ($user): void {
-            $user->update(['avatar' => null]);
+        DB::transaction(function () use ($user, $avatar): void {
+            if ($avatar instanceof File) {
+                $this->fileStorageService->delete($avatar);
+                $user->touch();
+            }
         });
 
-        if ($path !== null) {
-            Storage::disk(self::AVATAR_DISK)->delete($path);
-        }
-
-        $user = $user->fresh(['role', 'department', 'jobTitle']) ?? $user->load(['role', 'department', 'jobTitle']);
+        $user = $user->fresh(['role', 'department', 'jobTitle', 'avatarFile'])
+            ?? $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
         $after = $this->profileSnapshot($user);
 
         if ($before !== $after) {
@@ -193,26 +217,15 @@ class ProfileService
         return $this->show($user);
     }
 
-    public static function publicAvatarUrl(?string $avatar, ?\DateTimeInterface $version = null): ?string
+    public static function publicAvatarUrl(?File $avatar, ?\DateTimeInterface $version = null): ?string
     {
-        if ($avatar === null || $avatar === '') {
+        if ($avatar === null || $avatar->file_path === '') {
             return null;
         }
 
-        if (str_starts_with($avatar, 'http://') || str_starts_with($avatar, 'https://')) {
-            return self::withAvatarCacheBuster($avatar, $version);
-        }
+        $url = Storage::disk($avatar->disk ?: self::AVATAR_DISK)->url($avatar->file_path);
 
-        if (str_starts_with($avatar, '/')) {
-            $base = rtrim((string) config('app.url'), '/');
-
-            return self::withAvatarCacheBuster($base.$avatar, $version);
-        }
-
-        return self::withAvatarCacheBuster(
-            Storage::disk(self::AVATAR_DISK)->url($avatar),
-            $version,
-        );
+        return self::withAvatarCacheBuster($url, $version ?? $avatar->updated_at);
     }
 
     private static function withAvatarCacheBuster(string $url, ?\DateTimeInterface $version): string
@@ -226,22 +239,6 @@ class ProfileService
         return $url.$separator.'v='.$version->getTimestamp();
     }
 
-    private function storeAvatarFile(User $user, UploadedFile $file): string
-    {
-        $extension = $this->extensionForMime((string) $file->getMimeType());
-        $directory = 'avatars/'.$user->id;
-        $filename = 'avatar.'.$extension;
-        $path = $directory.'/'.$filename;
-
-        $stored = $file->storeAs($directory, $filename, self::AVATAR_DISK);
-
-        if ($stored === false || $stored !== $path) {
-            throw new RuntimeException('Unable to store avatar file.');
-        }
-
-        return $path;
-    }
-
     private function extensionForMime(string $mime): string
     {
         return match ($mime) {
@@ -250,19 +247,6 @@ class ProfileService
             'image/webp' => 'webp',
             default => throw new RuntimeException('Unsupported avatar MIME type.'),
         };
-    }
-
-    private function storedAvatarPath(?string $avatar): ?string
-    {
-        if ($avatar === null || $avatar === '') {
-            return null;
-        }
-
-        if (! str_starts_with($avatar, 'avatars/')) {
-            return null;
-        }
-
-        return $avatar;
     }
 
     /**
@@ -333,11 +317,13 @@ class ProfileService
      */
     private function profileSnapshot(User $user): array
     {
+        $user->loadMissing('avatarFile');
+
         return [
             'first_name' => $user->first_name,
             'middle_name' => $user->middle_name,
             'last_name' => $user->last_name,
-            'avatar' => $user->avatar,
+            'avatar' => $user->avatarFile?->file_path,
             'theme_preference' => $user->theme_preference,
             'notify_task_assigned' => (bool) $user->notify_task_assigned,
             'notify_task_status' => (bool) $user->notify_task_status,

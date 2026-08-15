@@ -47,7 +47,7 @@ class ProjectQuery
      */
     public function paginate(array $filters, User $actor): LengthAwarePaginator
     {
-        $query = Project::query()->with('owner');
+        $query = Project::query()->with('owner.avatarFile');
         $this->applyProgressAggregates($query);
 
         $this->applyVisibility($query, $actor);

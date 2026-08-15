@@ -40,7 +40,7 @@ class UserService
 
     public function find(User $user): User
     {
-        return $user->loadMissing(['role', 'department', 'jobTitle']);
+        return $user->loadMissing(['role', 'department', 'jobTitle', 'avatarFile']);
     }
 
     /**
@@ -58,10 +58,9 @@ class UserService
             'department_id' => $data['department_id'] ?? null,
             'job_title_id' => $data['job_title_id'] ?? null,
             'status' => $data['status'],
-            'avatar' => $data['avatar'] ?? null,
         ]);
 
-        $user = $user->load(['role', 'department', 'jobTitle']);
+        $user = $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
 
         $this->activityLogService->record(
             actor: $actor,
@@ -95,7 +94,6 @@ class UserService
             'department_id' => $data['department_id'] ?? null,
             'job_title_id' => $data['job_title_id'] ?? null,
             'status' => $data['status'],
-            'avatar' => $data['avatar'] ?? null,
         ];
 
         if ($passwordChanged) {
@@ -104,7 +102,7 @@ class UserService
 
         $user->update($attributes);
 
-        $user = $user->fresh(['role', 'department', 'jobTitle']) ?? $user->load(['role', 'department', 'jobTitle']);
+        $user = $user->fresh(['role', 'department', 'jobTitle', 'avatarFile']) ?? $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
         $after = $this->userSnapshot($user);
 
         if ($before !== $after || $passwordChanged) {
@@ -139,14 +137,14 @@ class UserService
         $previous = $this->scalar($user->status);
 
         if ($previous === $status->value) {
-            return $user->fresh(['role', 'department', 'jobTitle']) ?? $user->load(['role', 'department', 'jobTitle']);
+            return $user->fresh(['role', 'department', 'jobTitle', 'avatarFile']) ?? $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
         }
 
         $user->update([
             'status' => $status,
         ]);
 
-        $user = $user->fresh(['role', 'department', 'jobTitle']) ?? $user->load(['role', 'department', 'jobTitle']);
+        $user = $user->fresh(['role', 'department', 'jobTitle', 'avatarFile']) ?? $user->load(['role', 'department', 'jobTitle', 'avatarFile']);
 
         $action = $status === UserStatus::Active
             ? ActivityAction::UserActivated
@@ -182,7 +180,7 @@ class UserService
             'department_id' => $user->department_id,
             'job_title_id' => $user->job_title_id,
             'status' => $this->scalar($user->status),
-            'avatar' => $user->avatar,
+            'avatar' => $user->avatarFile?->file_path,
         ];
     }
 

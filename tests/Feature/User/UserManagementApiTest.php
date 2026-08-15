@@ -327,7 +327,6 @@ class UserManagementApiTest extends TestCase
             'department_id' => $this->department->id,
             'job_title_id' => $this->jobTitle->id,
             'status' => UserStatus::Active->value,
-            'avatar' => null,
         ], $overrides);
     }
 }

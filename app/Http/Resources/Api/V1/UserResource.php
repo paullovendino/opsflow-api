@@ -26,7 +26,12 @@ class UserResource extends JsonResource
             'last_name' => $this->last_name,
             'full_name' => $this->full_name,
             'email' => $this->email,
-            'avatar' => ProfileService::publicAvatarUrl($this->avatar, $this->updated_at),
+            'avatar' => ProfileService::publicAvatarUrl(
+                $this->relationLoaded('avatarFile')
+                    ? $this->avatarFile
+                    : $this->avatarFile()->first(),
+                $this->updated_at,
+            ),
             'status' => $this->status,
             'last_login_at' => $this->last_login_at,
             'theme_preference' => $this->theme_preference ?? 'system',

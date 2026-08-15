@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -27,7 +28,6 @@ use Laravel\Sanctum\HasApiTokens;
     'last_name',
     'email',
     'password',
-    'avatar',
     'status',
     'last_login_at',
     'theme_preference',
@@ -117,5 +117,16 @@ class User extends Authenticatable
     public function receivedNotifications(): HasMany
     {
         return $this->hasMany(Notification::class, 'recipient_id');
+    }
+
+    /**
+     * Active avatar file (collection = avatar). Latest wins if duplicates exist briefly during replace.
+     */
+    public function avatarFile(): MorphOne
+    {
+        return $this->morphOne(File::class, 'attachable')->ofMany(
+            ['id' => 'MAX'],
+            fn ($query) => $query->where('collection', File::COLLECTION_AVATAR),
+        );
     }
 }

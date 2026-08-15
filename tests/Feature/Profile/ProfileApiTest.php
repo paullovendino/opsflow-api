@@ -59,7 +59,6 @@ class ProfileApiTest extends TestCase
             'last_name' => 'Employee',
             'email' => 'eli.profile@opsflow.test',
             'password' => Hash::make('password'),
-            'avatar' => null,
             'status' => UserStatus::Active,
             'theme_preference' => 'system',
             'notify_task_assigned' => true,

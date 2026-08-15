@@ -48,7 +48,7 @@ class TaskService
 
     public function find(Task $task): Task
     {
-        return $task->loadMissing(['project', 'assignee', 'creator']);
+        return $task->loadMissing(['project', 'assignee.avatarFile', 'creator.avatarFile']);
     }
 
     /**

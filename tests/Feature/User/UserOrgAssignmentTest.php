@@ -194,7 +194,6 @@ class UserOrgAssignmentTest extends TestCase
             'department_id' => $this->engineering->id,
             'job_title_id' => $this->softwareEngineer->id,
             'status' => UserStatus::Active->value,
-            'avatar' => null,
         ], $overrides);
     }
 }

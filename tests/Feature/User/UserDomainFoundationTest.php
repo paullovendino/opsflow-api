@@ -39,7 +39,6 @@ class UserDomainFoundationTest extends TestCase
             'email',
             'email_verified_at',
             'password',
-            'avatar',
             'status',
             'last_login_at',
             'created_at',
@@ -47,14 +46,27 @@ class UserDomainFoundationTest extends TestCase
             'deleted_at',
         ]));
 
+        $this->assertFalse(Schema::hasColumn('users', 'avatar'));
         $this->assertFalse(Schema::hasColumn('users', 'name'));
+        $this->assertTrue(Schema::hasTable('files'));
+        $this->assertTrue(Schema::hasColumns('files', [
+            'file_name',
+            'file_path',
+            'disk',
+            'mime_type',
+            'extension',
+            'size',
+            'collection',
+            'attachable_type',
+            'attachable_id',
+        ]));
     }
 
     public function test_existing_user_name_is_migrated_into_structured_fields(): void
     {
         $this->seed(RolesSeeder::class);
 
-        $this->artisan('migrate:rollback', ['--step' => 8])->assertSuccessful();
+        $this->artisan('migrate:rollback', ['--step' => 10])->assertSuccessful();
 
         $this->assertTrue(Schema::hasColumn('users', 'name'));
         $this->assertFalse(Schema::hasColumn('users', 'first_name'));

@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Models\ActivityLog;
 use App\Models\Department;
+use App\Models\File;
 use App\Models\JobTitle;
 use App\Models\Notification;
 use App\Models\Project;
@@ -51,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
             'activity_log' => ActivityLog::class,
             'remark' => Remark::class,
             'notification' => Notification::class,
+            'file' => File::class,
         ]);
 
         Gate::policy(User::class, UserPolicy::class);

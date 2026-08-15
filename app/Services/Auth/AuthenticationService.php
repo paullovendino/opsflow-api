@@ -61,6 +61,6 @@ class AuthenticationService
         /** @var User $user */
         $user = $request->user();
 
-        return $user->loadMissing(['role', 'department', 'jobTitle']);
+        return $user->loadMissing(['role', 'department', 'jobTitle', 'avatarFile']);
     }
 }

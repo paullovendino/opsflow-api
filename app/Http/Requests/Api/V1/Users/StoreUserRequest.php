@@ -42,7 +42,6 @@ class StoreUserRequest extends FormRequest
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'job_title_id' => ['nullable', 'integer', 'exists:job_titles,id'],
             'status' => ['required', Rule::enum(UserStatus::class)],
-            'avatar' => ['nullable', 'string', 'max:255'],
         ];
     }
 

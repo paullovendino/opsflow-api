@@ -46,7 +46,7 @@ class ProjectService
 
     public function find(Project $project): Project
     {
-        $project->loadMissing('owner');
+        $project->loadMissing('owner.avatarFile');
 
         return $this->projectQuery->hydrateProgress($project);
     }

@@ -46,7 +46,7 @@ class UserQuery
      */
     public function paginate(array $filters): LengthAwarePaginator
     {
-        $query = User::query()->with(['role', 'department', 'jobTitle']);
+        $query = User::query()->with(['role', 'department', 'jobTitle', 'avatarFile']);
 
         $this->applySearch($query, $filters['search'] ?? null);
         $this->applyFilters($query, $filters);

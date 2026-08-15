@@ -51,7 +51,7 @@ class TaskQuery
      */
     public function paginate(array $filters, User $actor): LengthAwarePaginator
     {
-        $query = Task::query()->with(['project', 'assignee', 'creator']);
+        $query = Task::query()->with(['project', 'assignee.avatarFile', 'creator.avatarFile']);
 
         $this->applyVisibility($query, $actor);
         $this->applySearch($query, $filters['search'] ?? null);
