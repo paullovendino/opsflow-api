@@ -8,8 +8,10 @@ use App\Http\Controllers\Api\BaseApiController;
 use App\Http\Resources\Api\V1\DepartmentResource;
 use App\Http\Resources\Api\V1\JobTitleResource;
 use App\Http\Resources\Api\V1\RoleResource;
+use App\Models\Department;
 use App\Services\Lookups\LookupService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class LookupController extends BaseApiController
 {
@@ -33,10 +35,34 @@ class LookupController extends BaseApiController
         );
     }
 
-    public function jobTitles(): JsonResponse
+    public function jobTitles(Request $request): JsonResponse
     {
+        $departmentId = $request->filled('department_id')
+            ? (int) $request->integer('department_id')
+            : null;
+
+        $includeId = $request->filled('include_id')
+            ? (int) $request->integer('include_id')
+            : null;
+
         return $this->successResponse(
-            data: JobTitleResource::collection($this->lookupService->jobTitles()),
+            data: JobTitleResource::collection(
+                $this->lookupService->jobTitles($departmentId, $includeId),
+            ),
+            message: 'Job titles retrieved successfully.',
+        );
+    }
+
+    public function jobTitlesForDepartment(Request $request, Department $department): JsonResponse
+    {
+        $includeId = $request->filled('include_id')
+            ? (int) $request->integer('include_id')
+            : null;
+
+        return $this->successResponse(
+            data: JobTitleResource::collection(
+                $this->lookupService->jobTitlesForDepartment($department, $includeId),
+            ),
             message: 'Job titles retrieved successfully.',
         );
     }

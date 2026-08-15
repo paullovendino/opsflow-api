@@ -22,19 +22,49 @@ class LookupService
     }
 
     /**
+     * Active departments only, ordered by name.
+     *
      * @return Collection<int, Department>
      */
     public function departments(): Collection
     {
-        return $this->orderedByName(Department::query())->get();
+        return $this->orderedByName(Department::query()->active())->get();
     }
 
     /**
+     * Active job titles only. Optionally filter by department and/or include one inactive id for edit forms.
+     *
      * @return Collection<int, JobTitle>
      */
-    public function jobTitles(): Collection
+    public function jobTitles(?int $departmentId = null, ?int $includeId = null): Collection
     {
-        return $this->orderedByName(JobTitle::query())->get();
+        $query = JobTitle::query();
+
+        $query->where(function (Builder $builder) use ($departmentId, $includeId): void {
+            $builder->where(function (Builder $active) use ($departmentId): void {
+                $active->active();
+
+                if ($departmentId !== null) {
+                    $active->forDepartment($departmentId);
+                }
+            });
+
+            if ($includeId !== null) {
+                $builder->orWhere('id', $includeId);
+            }
+        });
+
+        return $this->orderedByName($query)->get();
+    }
+
+    /**
+     * Active job titles for a department (dependent dropdown), with optional include_id.
+     *
+     * @return Collection<int, JobTitle>
+     */
+    public function jobTitlesForDepartment(Department $department, ?int $includeId = null): Collection
+    {
+        return $this->jobTitles($department->id, $includeId);
     }
 
     /**

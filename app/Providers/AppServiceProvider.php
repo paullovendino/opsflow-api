@@ -15,6 +15,8 @@ use App\Models\Task;
 use App\Models\User;
 use App\Policies\ActivityLogPolicy;
 use App\Policies\DashboardPolicy;
+use App\Policies\DepartmentPolicy;
+use App\Policies\JobTitlePolicy;
 use App\Policies\NotificationPolicy;
 use App\Policies\ProjectPolicy;
 use App\Policies\RemarkPolicy;
@@ -52,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
         ]);
 
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Department::class, DepartmentPolicy::class);
+        Gate::policy(JobTitle::class, JobTitlePolicy::class);
         Gate::policy(Project::class, ProjectPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(ActivityLog::class, ActivityLogPolicy::class);

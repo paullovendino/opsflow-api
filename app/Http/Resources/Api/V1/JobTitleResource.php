@@ -20,9 +20,16 @@ class JobTitleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'department_id' => $this->department_id,
             'name' => $this->name,
             'code' => $this->code,
             'description' => $this->description,
+            'status' => $this->status,
+            'department' => $this->whenLoaded(
+                'department',
+                fn (): DepartmentResource => new DepartmentResource($this->department),
+            ),
+            'users_count' => $this->when(isset($this->users_count), $this->users_count),
         ];
     }
 }

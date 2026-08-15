@@ -30,4 +30,17 @@ enum ActivityAction: string
     case RemarkCreated = 'remark.created';
     case RemarkUpdated = 'remark.updated';
     case RemarkDeleted = 'remark.deleted';
+
+    case DepartmentCreated = 'department.created';
+    case DepartmentUpdated = 'department.updated';
+    case DepartmentActivated = 'department.activated';
+    case DepartmentDeactivated = 'department.deactivated';
+    case DepartmentDeleted = 'department.deleted';
+
+    case JobTitleCreated = 'job_title.created';
+    case JobTitleUpdated = 'job_title.updated';
+    case JobTitleActivated = 'job_title.activated';
+    case JobTitleDeactivated = 'job_title.deactivated';
+    case JobTitleDeleted = 'job_title.deleted';
+    case JobTitleDepartmentChanged = 'job_title.department_changed';
 }

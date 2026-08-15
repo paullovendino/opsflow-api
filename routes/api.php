@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\V1\ActivityLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\JobTitleController;
 use App\Http\Controllers\Api\V1\LookupController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -38,6 +40,21 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
         Route::patch('/users/{user}/status', [UserController::class, 'updateStatus'])->name('users.status');
+
+        Route::get('/departments', [DepartmentController::class, 'index'])->name('departments.index');
+        Route::post('/departments', [DepartmentController::class, 'store'])->name('departments.store');
+        Route::get('/departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
+        Route::put('/departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
+        Route::delete('/departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+        Route::patch('/departments/{department}/status', [DepartmentController::class, 'updateStatus'])->name('departments.status');
+        Route::get('/departments/{department}/job-titles', [JobTitleController::class, 'indexForDepartment'])->name('departments.job-titles.index');
+
+        Route::get('/job-titles', [JobTitleController::class, 'index'])->name('job-titles.index');
+        Route::post('/job-titles', [JobTitleController::class, 'store'])->name('job-titles.store');
+        Route::get('/job-titles/{jobTitle}', [JobTitleController::class, 'show'])->name('job-titles.show');
+        Route::put('/job-titles/{jobTitle}', [JobTitleController::class, 'update'])->name('job-titles.update');
+        Route::delete('/job-titles/{jobTitle}', [JobTitleController::class, 'destroy'])->name('job-titles.destroy');
+        Route::patch('/job-titles/{jobTitle}/status', [JobTitleController::class, 'updateStatus'])->name('job-titles.status');
 
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
@@ -93,6 +110,8 @@ Route::prefix('v1')->group(function (): void {
             Route::get('/roles', [LookupController::class, 'roles'])->name('lookups.roles');
             Route::get('/departments', [LookupController::class, 'departments'])->name('lookups.departments');
             Route::get('/job-titles', [LookupController::class, 'jobTitles'])->name('lookups.job-titles');
+            Route::get('/departments/{department}/job-titles', [LookupController::class, 'jobTitlesForDepartment'])
+                ->name('lookups.departments.job-titles');
         });
     });
 });
